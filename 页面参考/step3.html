@@ -1,0 +1,147 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>描述建立 - 领导力建模</title>
+<style>
+:root{--p:#6C216D;--p10:#F4ECF4;--p20:#E8D4E8;--p40:#BF88C0;--p60:#9A52A0;--p80:#7D3D7E;--pdk:#4A1550;
+--a:#E18C3F;--a10:#FEF4E8;--a20:#FADCC0;--a60:#C97028;--adk:#A05510;
+--bg:#F7F4F8;--sf:#FFF;--sf2:#FAF7FB;--br:#EAE0EC;--brk:#D0C0D3;
+--t1:#1A1520;--t2:#5C506A;--t3:#9585A0;
+--gr:#0F6E56;--grbg:#E1F5EE;--am:#7A4A08;--ambg:#FEF3C7;--rd:#991B1B;--rdbg:#FEE2E2;
+--sh:0 2px 8px rgba(108,33,109,.08),0 1px 3px rgba(0,0,0,.04);--shh:0 8px 24px rgba(108,33,109,.14)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',Arial,sans-serif;background:var(--bg);color:var(--t1);line-height:1.6;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--brk);border-radius:5px}
+.hdr{background:var(--p);padding:0 36px;height:54px;display:flex;align-items:center;gap:20px;flex-shrink:0}
+.logo{font-size:14.5px;font-weight:600;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--a)}
+.prog{display:flex;align-items:center;flex:1;gap:0}
+.ps{display:flex;align-items:center;gap:5px;text-decoration:none}
+.pd{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:all .2s}
+.pd.dn{background:rgba(255,255,255,.28);color:#fff}
+.pd.ac{background:var(--a);color:#fff;box-shadow:0 0 0 3px rgba(225,140,63,.3)}
+.pd.nd{background:rgba(255,255,255,.12);color:rgba(255,255,255,.35)}
+.pl{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap}.pl.ac{color:#fff;font-weight:500}
+.pln{flex:1;height:1px;background:rgba(255,255,255,.2);min-width:14px}.pln.dn{background:rgba(255,255,255,.4)}
+.ftr{background:var(--sf);border-top:1px solid var(--br);padding:13px 36px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:sticky;bottom:0;z-index:50}
+.step-info{font-size:12.5px;color:var(--t3);font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:8px;font-size:13.5px;font-weight:500;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:inherit;text-decoration:none;line-height:1.3;white-space:nowrap}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.btn-p{background:var(--p);color:#fff;border-color:var(--p)}.btn-p:hover{background:var(--p80)}
+.btn-a{background:var(--a);color:#fff;border-color:var(--a)}.btn-a:hover{background:var(--a60)}
+.btn-o{background:var(--sf);color:var(--t1);border-color:var(--br)}.btn-o:hover{background:var(--bg)}
+.btn-g{background:transparent;color:var(--t2);border-color:transparent;padding:5px 10px}.btn-g:hover{background:var(--bg)}
+.btn-d{background:transparent;color:var(--rd);border-color:transparent;padding:5px 10px}.btn-d:hover{background:var(--rdbg)}
+.btn-sm{padding:5px 12px;font-size:12.5px}
+.btn-lg{padding:13px 32px;font-size:15px}
+.lcard{background:var(--p10);border:1.5px solid var(--p20);border-left:3px solid var(--p);border-radius:0 8px 8px 0;padding:11px 15px;margin-bottom:16px;font-size:13px}
+.lcard b{color:var(--p80);display:block;margin-bottom:2px;font-size:13px;font-weight:600}
+.lcard p{color:var(--t2);line-height:1.55}
+.sec-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+.sec-t{font-size:16px;font-weight:600;color:var(--t1)}
+.sec-s{font-size:12.5px;color:var(--t2);margin-top:3px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:500}
+.bg-gr{background:var(--grbg);color:var(--gr)}.bg-am{background:var(--ambg);color:var(--am)}
+.bg-rd{background:var(--rdbg);color:var(--rd)}.bg-p{background:var(--p10);color:var(--p80)}
+.bg-a{background:var(--a10);color:var(--adk)}.bg-gy{background:#F0EDF5;color:#6A5F7A}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--sf);border-radius:16px;padding:24px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.m-hd{font-size:16px;font-weight:600;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;color:var(--t1)}
+.mx{background:none;border:none;font-size:22px;cursor:pointer;color:var(--t3);line-height:1}
+.ff{margin-bottom:13px}.ff label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea{width:100%;border:1.5px solid var(--br);border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;outline:none;color:var(--t1);transition:border-color .15s}
+.ff input:focus,.ff textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.ff textarea{resize:vertical;min-height:80px;line-height:1.6}
+.mft{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.main{flex:1;padding:22px 36px;max-width:1100px;margin:0 auto;width:100%}
+.card{background:var(--sf);border-radius:12px;border:1px solid var(--br);box-shadow:var(--sh)}
+</style>
+<style>
+.desc-list{display:flex;flex-direction:column;gap:12px}
+.di{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);box-shadow:var(--sh);overflow:hidden;transition:border-color .2s}
+.di-hd{padding:13px 16px 10px;display:flex;align-items:center;gap:10px}
+.di-nm{font-size:14px;font-weight:600;flex:1;color:var(--t1);display:flex;align-items:center;gap:8px}
+.di-nm::before{content:"";width:3px;height:16px;border-radius:2px;background:var(--p);flex-shrink:0}
+.di-txt{padding:0 16px 12px;font-size:13.5px;color:var(--t1);line-height:1.75;cursor:text}
+.di-txt:hover{background:var(--sf2)}
+.di-issue{padding:8px 16px;font-size:12.5px;background:#FFFBEB;border-top:1px solid #FDE68A;color:#92400E;display:flex;align-items:flex-start;gap:7px}
+.di-ft{padding:9px 16px;border-top:1px solid var(--br);display:flex;gap:8px;background:var(--sf2)}
+.di-ea{padding:0 16px 12px}
+.di-ea textarea{width:100%;border:1.5px solid var(--br);border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;resize:vertical;min-height:72px;outline:none;line-height:1.7;color:var(--t1)}
+.di-ea textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.regen-row{padding:0 16px 12px;display:flex;gap:8px}
+.regen-row input{flex:1;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;color:var(--t1)}
+.regen-row input:focus{border-color:var(--a);box-shadow:0 0 0 3px var(--a10)}
+.regen-btn{background:var(--a);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
+.regen-btn:hover{background:var(--a60)}
+</style>
+</head><body>
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog"><a class="ps" href="step1.html"><div class="pd dn">✓</div><span class="pl ">信息采集</span></a><div class="pln dn"></div><a class="ps" href="step2.html"><div class="pd dn">✓</div><span class="pl ">维度确认</span></a><div class="pln dn"></div><a class="ps" href="step3.html"><div class="pd ac">3</div><span class="pl ac">描述建立</span></a><div class="pln "></div><a class="ps" href="step4.html"><div class="pd nd">4</div><span class="pl ">行为锚定</span></a><div class="pln "></div><a class="ps" href="step5.html"><div class="pd nd">5</div><span class="pl ">总览导出</span></a></nav>
+</header>
+<div class="main">
+  <div class="lcard"><b>维度描述建立（M03）— 第二次人机交接</b><p>AI 已为每个维度生成针对中层管理者的定位描述。⚠️ 标识含质检提示，点击描述文字可直接编辑，或指定方向重新生成。</p></div>
+  <div class="sec-row"><div class="sec-t">维度定位描述</div></div>
+  <div class="desc-list" id="descList"></div>
+</div>
+<footer class="ftr">
+  <a href="step2.html" class="btn btn-o">← 上一步</a>
+  <span class="step-info">步骤 3 / 5</span>
+  <button class="btn btn-p" id="nextBtn" onclick="goNext()" >确认描述，生成行为锚定 →</button>
+</footer>
+
+<script>
+let descs=[
+  {id:"D1",nm:"战略引领",desc:"在中层管理者层级，战略引领体现在能够深度理解公司战略意图，将其转化为本部门年度目标和季度优先级，定期向团队解读战略背景，确保成员理解日常工作与战略的连接，保持执行方向不偏离。",qc:{ok:true,issues:[]}},
+  {id:"D2",nm:"团队赋能",desc:"聚焦团队成员的能力成长，通过定期 1on1 识别个人瓶颈，结合项目历练给予针对性辅导，在关键决策中有意识地授权，使成员在承担责任中快速成长，形成自我驱动的学习氛围。",qc:{ok:true,issues:[]}},
+  {id:"D3",nm:"跨部门协作",desc:"主动识别跨部门协作节点，建立定期同步机制，在资源冲突和利益分歧出现时及时介入斡旋，确保己方需求清晰传递，推动多方达成共识，减少因信息不对称带来的摩擦和延误。",qc:{ok:false,issues:["[空泛词汇] 「及时」建议改为可量化描述，如「发现分歧后24小时内」"]}},
+  {id:"D4",nm:"执行与交付",desc:"将团队目标拆解至每位成员的具体任务，明确时间节点与交付标准，每周追踪关键里程碑，遇到执行偏差当天启动资源协调，确保承诺按期高质量完成。",qc:{ok:true,issues:[]}},
+  {id:"D5",nm:"沟通影响力",desc:"根据汇报对象灵活调整沟通策略：向上聚焦结论和风险，横向强调共同利益，向下重在拆解和激励，确保信息准确传递并被对方真正理解和采纳。",qc:{ok:true,issues:[]}},
+];
+let editStates={};
+
+function render(){
+  document.getElementById("descList").innerHTML=descs.map(d=>{
+    const ok=d.qc.ok&&!d.qc.issues.length;
+    const es=editStates[d.id]||{};
+    return `<div class="di">
+      <div class="di-hd">
+        <div class="di-nm">${d.nm}</div>
+        <span class="badge ${ok?"bg-gr":"bg-am"}">${ok?"✅ 质检通过":"⚠️ 建议审阅"}</span>
+      </div>
+      ${es.editing?`<div class="di-ea"><textarea id="ta_${d.id}">${d.desc}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-p btn-sm" onclick="saveDesc('${d.id}')">保存</button>
+          <button class="btn btn-o btn-sm" onclick="cancelEdit('${d.id}')">取消</button>
+        </div></div>`
+      :`<div class="di-txt" onclick="startEdit('${d.id}')" title="点击编辑">${d.desc}</div>`}
+      ${(!es.editing&&d.qc.issues.length)?d.qc.issues.map(i=>`<div class="di-issue"><span>⚠️</span> ${i}</div>`).join(""):"" }
+      ${!es.editing?`<div class="di-ft">
+        <button class="btn btn-g btn-sm" onclick="startEdit('${d.id}')">✏️ 编辑</button>
+        <button class="btn btn-g btn-sm" onclick="toggleRegen('${d.id}')">🔄 重新生成</button>
+      </div>`:""}
+      ${es.regen&&!es.editing?`<div class="regen-row">
+        <input id="rd_${d.id}" placeholder="输入修改方向，如：更聚焦业务结果、更强调跨部门协作…">
+        <button class="regen-btn" onclick="regenDesc('${d.id}')">生成</button>
+      </div>`:"" }
+    </div>`;
+  }).join("");
+}
+
+function startEdit(id){editStates[id]={editing:true,regen:false};render();setTimeout(()=>document.getElementById("ta_"+id)?.focus(),50);}
+function cancelEdit(id){editStates[id]={};render();}
+function saveDesc(id){const d=descs.find(x=>x.id===id);if(d){d.desc=document.getElementById("ta_"+id).value;d.qc={ok:true,issues:[]};};editStates[id]={};render();}
+function toggleRegen(id){editStates[id]={...(editStates[id]||{}),regen:!(editStates[id]?.regen)};render();setTimeout(()=>document.getElementById("rd_"+id)?.focus(),50);}
+function regenDesc(id){
+  const d=descs.find(x=>x.id===id);if(!d)return;
+  const dir=document.getElementById("rd_"+id)?.value||"优化表述";
+  editStates[id]={};
+  d.desc="⏳ 重新生成中，请稍候…";render();
+  setTimeout(()=>{
+    d.desc=`根据「${dir}」方向重新生成：在中层管理者层级，${d.nm}要求管理者能够系统性展现相关能力，结合企业业务特点将其转化为可观察的具体行动和可衡量的工作成果，并定期复盘持续优化。`;
+    d.qc={ok:true,issues:[]};render();
+  },1100);
+}
+function goNext(){localStorage.setItem("lm_descs",JSON.stringify(descs));window.location.href="step4.html";}
+render();
+</script>
+</body></html>

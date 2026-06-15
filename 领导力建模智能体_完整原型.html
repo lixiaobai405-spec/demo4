@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--
+================================================================
+  领导力建模智能体 · 完整交互原型 · 开发交付版
+================================================================
+  版本    : MVP v1.0
+  架构    : 原生 HTML5 / CSS3 / ES6 SPA (无框架)
+  外部依赖 :
+    - mammoth.js ^1.6.0  — DOCX 文本提取
+    - Anthropic Messages API — AI 对话 & 文档解析
+  API Model : claude-sonnet-4-20250514
+  颜色规范 :
+    主色  #6C216D  辅助色  #E18C3F  背景  #F7F4F8
+
+  页面流程 :
+    首页 (index) → M01 信息采集 → M02 维度确认
+    → M03 描述建立 → M04 行为锚定 → M05 总览导出
+
+  数据流 :
+    STATE 对象 → localStorage (lm_*)
+    AI 调用 → /v1/messages (由后端代理注入 API Key)
+
+  生产接入 TODO :
+    [ ] 后端代理 Anthropic API Key，前端只调用内部接口
+    [ ] 真实文档解析服务替换浏览器端 mammoth.js
+    [ ] Word/PDF 导出使用 docx.js 或服务端渲染
+    [ ] 状态持久化迁移至用户 session / 数据库
+    [ ] 对话摘要改为后端结构化接口，避免 prompt 注入
+================================================================
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>领导力建模智能体</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+/* ══ 主题变量 ══════════════════════════════════════════════════ */
+:root{
+  --p:#6C216D; --p10:#F4ECF4; --p20:#E8D4E8; --p40:#BF88C0;
+  --p60:#9A52A0; --p80:#7D3D7E; --pdk:#4A1550;
+  --a:#E18C3F;  --a10:#FEF4E8; --a20:#FADCC0;
+  --a60:#C97028; --adk:#A05510;
+  --bg:#F7F4F8; --sf:#FFF; --sf2:#FAF7FB;
+  --br:#EAE0EC; --brk:#D0C0D3;
+  --t1:#1A1520; --t2:#5C506A; --t3:#9585A0;
+  --gr:#0F6E56; --grbg:#E1F5EE;
+  --am:#7A4A08; --ambg:#FEF3C7;
+  --rd:#991B1B; --rdbg:#FEE2E2;
+  --sh:0 2px 8px rgba(108,33,109,.08),0 1px 3px rgba(0,0,0,.04);
+  --shh:0 8px 24px rgba(108,33,109,.14);
+}
+/* ══ 全局重置 ══════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',Arial,sans-serif;
+  background:var(--bg);color:var(--t1);line-height:1.6;font-size:14px;
+  height:100vh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--brk);border-radius:5px}
+/* ══ 布局外壳 ══════════════════════════════════════════════════ */
+#hdr{background:var(--p);height:54px;padding:0 32px;display:flex;align-items:center;
+  gap:20px;flex-shrink:0;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+#main{flex:1;overflow-y:auto;padding:18px 32px;max-width:1200px;margin:0 auto;width:100%}
+#ftr{background:var(--sf);border-top:1px solid var(--br);padding:11px 32px;
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+/* ══ Header 组件 ═══════════════════════════════════════════════ */
+.logo{font-size:14.5px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px;
+  text-decoration:none;white-space:nowrap;cursor:pointer}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--a);flex-shrink:0}
+.prog{display:flex;align-items:center;flex:1;gap:0;overflow:hidden}
+.ps{display:flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0}
+.pd{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;transition:all .2s}
+.pd.done{background:rgba(255,255,255,.28);color:#fff}
+.pd.active{background:var(--a);color:#fff;box-shadow:0 0 0 3px rgba(225,140,63,.3)}
+.pd.pending{background:rgba(255,255,255,.12);color:rgba(255,255,255,.38)}
+.pl{font-size:11px;white-space:nowrap;color:rgba(255,255,255,.7)}
+.pl.active{color:#fff;font-weight:500}
+.pline{flex:1;height:1px;background:rgba(255,255,255,.2);min-width:12px}
+.pline.done{background:rgba(255,255,255,.4)}
+/* ══ Footer 组件 ═══════════════════════════════════════════════ */
+.step-badge{font-size:12.5px;color:var(--t3);font-weight:500}
+/* ══ 按钮系统 ══════════════════════════════════════════════════ */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:8px;
+  font-size:13.5px;font-weight:500;border:1.5px solid transparent;cursor:pointer;
+  transition:all .15s;font-family:inherit;text-decoration:none;line-height:1.3;white-space:nowrap}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.btn-p{background:var(--p);color:#fff}.btn-p:hover:not(:disabled){background:var(--p80)}
+.btn-a{background:var(--a);color:#fff}.btn-a:hover{background:var(--a60)}
+.btn-o{background:var(--sf);color:var(--t1);border-color:var(--br)}.btn-o:hover{background:var(--bg)}
+.btn-g{background:transparent;color:var(--t2);border-color:transparent;padding:5px 10px}
+.btn-g:hover{background:var(--bg)}
+.btn-d{background:transparent;color:var(--rd);border-color:transparent;padding:5px 10px}
+.btn-d:hover{background:var(--rdbg)}
+.btn-sm{padding:5px 12px;font-size:12.5px}
+.btn-lg{padding:12px 28px;font-size:15px}
+/* ══ 通用卡片 ══════════════════════════════════════════════════ */
+.card{background:var(--sf);border-radius:12px;border:1px solid var(--br);box-shadow:var(--sh)}
+.card:hover{box-shadow:var(--shh)}
+/* ══ 逻辑说明卡 ════════════════════════════════════════════════ */
+.lcard{background:var(--p10);border:1.5px solid var(--p20);border-left:3px solid var(--p);
+  border-radius:0 8px 8px 0;padding:11px 15px;margin-bottom:16px;font-size:13px}
+.lcard b{color:var(--p80);display:block;margin-bottom:2px;font-size:13px;font-weight:600}
+.lcard p{color:var(--t2);line-height:1.55}
+/* ══ Badge / Tag ═══════════════════════════════════════════════ */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;
+  border-radius:100px;font-size:11px;font-weight:500}
+.bg-gr{background:var(--grbg);color:var(--gr)}
+.bg-am{background:var(--ambg);color:var(--am)}
+.bg-rd{background:var(--rdbg);color:var(--rd)}
+.bg-p{background:var(--p10);color:var(--p80)}
+.bg-a{background:var(--a10);color:var(--adk)}
+.bg-gy{background:#F0EDF5;color:#6A5F7A}
+/* ══ 区块标题行 ════════════════════════════════════════════════ */
+.sec-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+.sec-t{font-size:16px;font-weight:600;color:var(--t1)}
+.sec-s{font-size:12.5px;color:var(--t2);margin-top:3px}
+/* ══ 模态框 ════════════════════════════════════════════════════ */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.44);
+  z-index:200;align-items:center;justify-content:center;padding:20px}
+#modal.show{display:flex}
+.modal-box{background:var(--sf);border-radius:16px;padding:24px;
+  width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.modal-hd{font-size:16px;font-weight:600;margin-bottom:18px;display:flex;
+  justify-content:space-between;align-items:center;color:var(--t1)}
+.modal-x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--t3);line-height:1}
+.ff{margin-bottom:13px}
+.ff label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea{width:100%;border:1.5px solid var(--br);border-radius:8px;
+  padding:9px 12px;font-size:13.5px;font-family:inherit;outline:none;color:var(--t1);
+  transition:border-color .15s;background:var(--sf)}
+.ff input:focus,.ff textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.ff textarea{resize:vertical;min-height:80px;line-height:1.6}
+.modal-ft{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+/* ══ Toast 提示 ════════════════════════════════════════════════ */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:#1A1520;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;
+  opacity:0;transition:all .3s;z-index:300;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ══ STEP 1 — 聊天 + 上传 ══════════════════════════════════════ */
+.s1-grid{display:grid;grid-template-columns:1fr 300px;gap:14px;
+  height:calc(100vh - 54px - 55px - 100px);min-height:380px}
+.chat-pane{display:flex;flex-direction:column;background:var(--sf);border-radius:12px;
+  border:1px solid var(--br);box-shadow:var(--sh);overflow:hidden}
+.chat-ttl{padding:11px 14px;border-bottom:1px solid var(--br);display:flex;
+  align-items:center;gap:8px;background:var(--sf2);flex-shrink:0}
+.chat-ttl-main{font-size:13px;font-weight:600;color:var(--t1)}
+.chat-ttl-sub{font-size:11.5px;color:var(--t3);margin-left:auto}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;
+  gap:11px;min-height:0}
+.msg{display:flex;gap:8px;max-width:90%}
+.msg.ai{align-self:flex-start}.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg.doc{align-self:flex-start}
+.av{width:28px;height:28px;border-radius:50%;border:1.5px solid;display:flex;
+  align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.av-ai{background:var(--p10);border-color:var(--p20);color:var(--p)}
+.av-doc{background:var(--a10);border-color:var(--a20);color:var(--adk)}
+.bub{padding:10px 13px;border-radius:11px;font-size:13.5px;line-height:1.65}
+.bub-ai{background:var(--bg);border:1px solid var(--br);border-radius:3px 11px 11px 11px;color:var(--t1)}
+.bub-user{background:var(--p);color:#fff;border-radius:11px 3px 11px 11px}
+.bub-doc{background:var(--a10);border:1px solid var(--a20);border-radius:3px 11px 11px 11px;color:var(--adk)}
+.typing{display:flex;gap:5px;align-items:center;padding:10px 13px;
+  background:var(--bg);border:1px solid var(--br);border-radius:3px 11px 11px 11px}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--p40);
+  animation:tp 1.2s ease-in-out infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes tp{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-4px);opacity:1}}
+.chat-foot{border-top:1px solid var(--br);padding:10px 12px;display:flex;
+  gap:8px;background:var(--sf2);flex-shrink:0}
+.ci{flex:1;border:1.5px solid var(--br);border-radius:8px;padding:8px 11px;font-size:13.5px;
+  font-family:inherit;outline:none;resize:none;max-height:80px;line-height:1.5;color:var(--t1);
+  background:var(--sf);transition:border-color .15s}
+.ci:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.csend{background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 14px;
+  cursor:pointer;font-size:13.5px;font-weight:500;transition:background .15s}
+.csend:hover{background:var(--p80)}
+.right-pane{display:flex;flex-direction:column;gap:11px;overflow-y:auto;min-height:0}
+.sum-card{background:var(--sf);border-radius:12px;border:1px solid var(--br);
+  box-shadow:var(--sh);overflow:hidden;flex-shrink:0}
+.sum-hd{background:var(--p10);padding:10px 13px;font-size:12.5px;font-weight:600;
+  color:var(--p80);border-bottom:1px solid var(--p20);display:flex;align-items:center;gap:7px}
+.sum-bd{padding:12px 13px}
+.sf3{margin-bottom:8px}.sf3:last-child{margin-bottom:0}
+.sf3-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);
+  margin-bottom:2px;font-weight:500}
+.sf3-v{font-size:12.5px;color:var(--t1)}
+.confirm-ok{background:var(--grbg);border:1px solid #86EFAC;border-radius:9px;
+  padding:10px 13px;font-size:12.5px;color:var(--gr);font-weight:500;
+  display:flex;align-items:center;gap:7px}
+/* 上传区 */
+.upload-card{background:var(--sf);border-radius:12px;border:1px solid var(--br);
+  box-shadow:var(--sh);overflow:hidden}
+.upload-hd{background:var(--a10);padding:10px 13px;font-size:12.5px;font-weight:600;
+  color:var(--adk);border-bottom:1px solid var(--a20);display:flex;align-items:center;gap:7px}
+.upload-hd span{font-size:11px;color:var(--a60);font-weight:400;margin-left:auto}
+.dropzone{border:2px dashed var(--brk);border-radius:10px;padding:16px 13px;text-align:center;
+  cursor:pointer;transition:all .2s;margin:11px;background:var(--bg);position:relative}
+.dropzone:hover,.dropzone.over{border-color:var(--a);background:var(--a10)}
+.dropzone p{font-size:12.5px;color:var(--t2);margin:4px 0}
+.dropzone b{color:var(--a)}
+.dropzone small{font-size:11px;color:var(--t3)}
+.file-input-real{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fl{display:flex;flex-direction:column}
+.fi{padding:9px 13px;border-top:1px solid var(--br);display:flex;align-items:flex-start;gap:8px}
+.fi-ico{font-size:17px;flex-shrink:0;margin-top:2px}
+.fi-info{flex:1;min-width:0}
+.fi-name{font-size:12.5px;font-weight:500;color:var(--t1);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.fi-meta{font-size:11px;color:var(--t3);margin-top:1px}
+.fi-act{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.fi-act button{font-size:11.5px;padding:3px 9px;border-radius:6px;border:1px solid var(--br);
+  background:var(--sf);color:var(--t2);cursor:pointer;transition:all .15s}
+.fi-act button:hover{border-color:var(--a);color:var(--a);background:var(--a10)}
+.fi-st{font-size:11px;padding:2px 8px;border-radius:100px;font-weight:500;flex-shrink:0}
+.st-pend{background:var(--p10);color:var(--p60)}
+.st-load{background:var(--ambg);color:var(--am)}
+.st-done{background:var(--grbg);color:var(--gr)}
+.st-err{background:var(--rdbg);color:var(--rd)}
+.fi-res{background:var(--sf2);border-top:1px solid var(--br);padding:10px 13px;
+  font-size:12px;color:var(--t2);line-height:1.65;display:none}
+.fi-res.show{display:block}
+.pbar{height:3px;background:var(--a20);border-radius:3px;margin-top:6px;overflow:hidden}
+.pbar-fill{height:100%;background:var(--a);border-radius:3px;transition:width .4s;width:0}
+/* ══ STEP 2 — 维度确认 ═════════════════════════════════════════ */
+.dim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:13px}
+.dc{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);
+  box-shadow:var(--sh);overflow:hidden;transition:all .2s}
+.dc:hover{box-shadow:var(--shh)}
+.dc.ok{border-color:var(--gr)}
+.dc-hd{padding:13px 14px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:7px}
+.dc-nm{font-size:14px;font-weight:600;color:var(--t1)}
+.dc-df{padding:0 14px 10px;font-size:12.5px;color:var(--t2);line-height:1.6}
+.dc-src{padding:0 14px 10px;display:flex;flex-wrap:wrap;gap:4px}
+.src-tag{font-size:10.5px;padding:2px 7px;border-radius:100px}
+.dc-ft{padding:8px 14px;border-top:1px solid var(--br);display:flex;gap:6px;background:var(--sf2)}
+.dc.ok .dc-ft{background:var(--grbg)}
+.alt-wrap{margin-top:20px;background:var(--sf);border-radius:12px;
+  border:1px solid var(--br);padding:15px 17px;box-shadow:var(--sh)}
+.alt-ttl{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:10px;
+  display:flex;align-items:center;gap:7px}
+.alt-chips{display:flex;flex-wrap:wrap;gap:7px}
+.alt-chip{padding:5px 12px;border-radius:100px;border:1.5px dashed var(--brk);
+  font-size:12.5px;cursor:pointer;color:var(--t2);background:var(--sf);transition:all .15s}
+.alt-chip:hover{border-color:var(--p);color:var(--p);background:var(--p10)}
+/* ══ STEP 3 — 描述建立 ═════════════════════════════════════════ */
+.desc-list{display:flex;flex-direction:column;gap:11px}
+.di{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);
+  box-shadow:var(--sh);overflow:hidden}
+.di-hd{padding:12px 14px 9px;display:flex;align-items:center;gap:10px}
+.di-nm{font-size:14px;font-weight:600;flex:1;color:var(--t1);
+  display:flex;align-items:center;gap:8px}
+.di-nm::before{content:"";width:3px;height:16px;border-radius:2px;
+  background:var(--p);flex-shrink:0}
+.di-txt{padding:0 14px 11px;font-size:13.5px;color:var(--t1);line-height:1.75;cursor:text}
+.di-txt:hover{background:var(--sf2)}
+.di-iss{padding:7px 14px;font-size:12.5px;background:#FFFBEB;
+  border-top:1px solid #FDE68A;color:#92400E}
+.di-ft{padding:8px 14px;border-top:1px solid var(--br);display:flex;gap:7px;background:var(--sf2)}
+.di-ea{padding:0 14px 11px}
+.di-ea textarea{width:100%;border:1.5px solid var(--br);border-radius:8px;
+  padding:9px 11px;font-size:13.5px;font-family:inherit;resize:vertical;
+  min-height:70px;outline:none;line-height:1.7;color:var(--t1);background:var(--sf)}
+.di-ea textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.regen-row{padding:0 14px 10px;display:flex;gap:7px}
+.regen-row input{flex:1;border:1.5px solid var(--br);border-radius:8px;padding:7px 11px;
+  font-size:13px;font-family:inherit;outline:none;color:var(--t1);background:var(--sf)}
+.regen-row input:focus{border-color:var(--a);box-shadow:0 0 0 3px var(--a10)}
+.regen-btn{background:var(--a);color:#fff;border:none;border-radius:8px;
+  padding:7px 13px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
+.regen-btn:hover{background:var(--a60)}
+/* ══ STEP 4 — 行为锚定 ═════════════════════════════════════════ */
+.anc-acc{display:flex;flex-direction:column;gap:10px}
+.anc-item{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);
+  box-shadow:var(--sh);overflow:hidden}
+.anc-hd{padding:13px 15px;display:flex;align-items:center;gap:9px;
+  cursor:pointer;user-select:none;transition:background .15s}
+.anc-hd:hover{background:var(--sf2)}
+.anc-chev{font-size:12px;color:var(--t3);transition:transform .2s;flex-shrink:0}
+.anc-chev.open{transform:rotate(90deg)}
+.anc-nm{font-size:14px;font-weight:600;flex:1;color:var(--t1)}
+.anc-bd{display:none;padding:0 15px 15px}
+.anc-bd.open{display:block}
+.anc-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-top:11px}
+.col-hd{font-size:12px;font-weight:600;padding:5px 9px;border-radius:7px;
+  margin-bottom:7px;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px}
+.col-ex{background:var(--grbg);color:var(--gr)}
+.col-st{background:var(--p10);color:var(--p80)}
+.col-bl{background:var(--rdbg);color:var(--rd)}
+.beh{font-size:12.5px;color:var(--t1);line-height:1.65;padding:7px 9px;border-radius:7px;
+  background:var(--bg);margin-bottom:5px;border:1.5px solid transparent;
+  outline:none;display:block;width:100%;transition:all .15s;cursor:text}
+.beh:hover{border-color:var(--br);background:var(--sf)}
+.beh:focus{border-color:var(--p);background:var(--sf);box-shadow:0 0 0 3px var(--p10)}
+/* ══ STEP 5 — 总览导出 ═════════════════════════════════════════ */
+.done-banner{background:linear-gradient(135deg,var(--pdk) 0%,var(--p) 55%,var(--p60) 100%);
+  border-radius:14px;padding:22px 26px;color:#fff;margin-bottom:20px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px}
+.done-banner h2{font-size:21px;font-weight:700;margin-bottom:4px}
+.done-banner p{font-size:14px;opacity:.82;line-height:1.6}
+.done-btns{display:flex;gap:9px;flex-shrink:0;flex-wrap:wrap}
+.btn-word{background:#fff;color:var(--p);border:none;padding:9px 18px;border-radius:9px;
+  font-size:13.5px;font-weight:600;cursor:pointer}
+.btn-word:hover{background:var(--p10)}
+.btn-pdf{background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.5);
+  padding:9px 18px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.btn-pdf:hover{background:rgba(255,255,255,.28)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px}
+.stat{background:var(--sf);border-radius:11px;border:1px solid var(--br);
+  padding:15px 18px;text-align:center;box-shadow:var(--sh)}
+.stat-n{font-size:28px;font-weight:700;color:var(--p);line-height:1.1}
+.stat-l{font-size:12px;color:var(--t2);margin-top:5px;font-weight:500}
+.ov-list{display:flex;flex-direction:column;gap:10px}
+.ov-item{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);
+  box-shadow:var(--sh);overflow:hidden}
+.ov-hd{padding:13px 17px;display:flex;align-items:center;gap:10px;
+  cursor:pointer;user-select:none}
+.ov-hd:hover{background:var(--sf2)}
+.ov-num{width:26px;height:26px;border-radius:50%;background:var(--p10);
+  color:var(--p80);font-size:12px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0}
+.ov-nm{font-size:14.5px;font-weight:600;flex:1;color:var(--t1)}
+.ov-chev{font-size:12px;color:var(--t3);transition:transform .2s}
+.ov-chev.open{transform:rotate(90deg)}
+.ov-bd{display:none;padding:0 17px 17px;border-top:1px solid var(--br)}
+.ov-bd.open{display:block}
+.ov-desc{font-size:13px;color:var(--t2);line-height:1.75;padding:13px 0 11px}
+.bsec{margin-bottom:11px}
+.bsec:last-child{margin-bottom:0}
+.bsec-lbl{font-size:12px;font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.brow{font-size:12.5px;padding:6px 10px;border-radius:7px;margin-bottom:4px;border-left:2.5px solid}
+.brow-ex{background:var(--grbg);border-color:var(--gr);color:#1A3025}
+.brow-st{background:var(--p10);border-color:var(--p);color:var(--pdk)}
+.brow-bl{background:var(--rdbg);border-color:var(--rd);color:#3B1010}
+/* ══ 加载动画 ═══════════════════════════════════════════════════ */
+.ldg{text-align:center;padding:50px 0;color:var(--t2)}
+.ldots{display:inline-flex;gap:6px;margin:12px 0}
+.ldots span{width:9px;height:9px;border-radius:50%;animation:ld 1.2s ease-in-out infinite}
+.ldots span:nth-child(2){animation-delay:.2s}.ldots span:nth-child(3){animation-delay:.4s}
+@keyframes ld{0%,80%,100%{transform:translateY(0);opacity:.3}40%{transform:translateY(-5px);opacity:1}}
+</style>
+</head>
+<body>
+<!-- ── 应用外壳 ── -->
+<header id="hdr"></header>
+<main id="main"></main>
+<footer id="ftr"></footer>
+
+<!-- ── 全局模态框 ── -->
+<div id="modal" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd">
+      <span id="modal-title">编辑</span>
+      <button class="modal-x" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-ft">
+      <button class="btn btn-o btn-sm" onclick="closeModal()">取消</button>
+      <button class="btn btn-p btn-sm" id="modal-save" onclick="saveModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast 提示 ── -->
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   1. 常量 & 主题
+════════════════════════════════════════════════════════════ */
+const STEP_LABELS = ['信息采集','维度确认','描述建立','行为锚定','总览导出'];
+const STEP_COLORS = ['#534AB7','#0F6E56','#993C1D','#854F0B','#185FA5']; // 步骤指示色（预留扩展）
+
+/* ════════════════════════════════════════════════════════════
+   2. 全局状态 — 单一数据源
+   生产环境建议迁移至 Pinia / Zustand / Redux
+════════════════════════════════════════════════════════════ */
+const STATE = {
+  step: 1,
+  loading: false,
+  modal: null,          // { type, id } 当前激活的模态框
+
+  /* Step 1 */
+  chatIdx: 0,           // 对话脚本进度
+  chatMsgs: [],         // [{ role:'ai'|'user'|'doc', html }]
+  summaryConfirmed: false,
+  docContext: [],       // 文档解析关键词（注入摘要）
+  uploadFiles: [],      // [{ id, file, status, result }]
+
+  /* Step 2 */
+  dims: [],             // 维度对象数组（见 MOCK_DIMS）
+  alts: [],             // 备选维度池
+
+  /* Step 3 */
+  descs: [],            // 描述对象数组
+
+  /* Step 4 */
+  anchors: [],          // 行为锚定数组
+  openAnchors: { D1: true }, // 手风琴展开状态
+
+  /* Step 5 */
+  openOverviews: {},    // 总览手风琴状态
+};
+
+/* ════════════════════════════════════════════════════════════
+   3. 模拟数据
+   生产环境由后端 API 返回，此处为原型演示用
+════════════════════════════════════════════════════════════ */
+
+/** 对话脚本 —— 顺序引导 6 轮 */
+const CHAT_SCRIPT = [
+  "欢迎使用领导力建模智能体！🎉<br><br>我将通过几轮对话帮您梳理建模所需的信息。您也可以在右侧<strong>上传参考文档</strong>辅助建模，完成后自动生成摘要。<br><br><strong>请问贵公司主要做什么业务？所在行业是哪个？</strong>",
+  "了解了！<strong>请问贵公司目前有多少员工？处于什么发展阶段？</strong>（快速扩张期 / 稳定经营期 / 转型调整期）",
+  "明白了。<strong>贵公司今年最主要的战略重点是什么？</strong>（开拓新市场 / 数字化转型 / 提升运营效率…）",
+  "好的。<strong>在管理层面，目前让您最头疼的问题是什么？</strong>（执行力参差 / 跨部门协作摩擦大…）",
+  "感谢！本次建模聚焦哪个管理层级？<br><br>A. 基层管理者（团队长/小组长）<br><strong>B. 中层管理者</strong>（部门经理/业务线负责人）<br>C. 高层管理者（VP/总经理）<br>D. 自定义",
+  "好的，本次针对 <strong>中层管理者</strong> 建模。<br><strong>在这个层级中，优秀管理者有哪些让您印象深刻的具体行为表现？</strong>（越具体越好）",
+];
+
+const MOCK_SUMMARY = {
+  '行业/业务': '科技行业，SaaS 软件 to B 服务',
+  '规模/阶段': '500-1000 人，快速扩张期',
+  '战略重点': '新客户拓展；产品交付效率提升',
+  '管理痛点': '中层执行力参差；跨部门协作摩擦',
+  '建模层级': '中层管理者（部门经理/业务线负责人）',
+  '优秀画像': '主动跨部门协调、目标拆解清晰、能培养下属',
+};
+
+/**
+ * 维度对象结构：
+ * { id, nm(名称), df(定义), pri(core|important|supplementary),
+ *   ok(是否确认), src:{ s(战略), f(框架), i(访谈) } }
+ */
+const MOCK_DIMS = [
+  {id:'D1',nm:'战略引领',df:'理解并转化公司战略，将目标拆解为团队可执行的阶段工作计划，在组织变化中保持方向感与凝聚力。',pri:'core',ok:false,src:{s:'战略重点承接',f:'美世 Strategic Orientation',i:'「让团队知道方向」'}},
+  {id:'D2',nm:'团队赋能',df:'识别成员能力差距，通过辅导、授权和持续反馈激发个体潜力，构建高效协作的学习型团队。',pri:'core',ok:false,src:{s:'人才梯队建设',f:'DDI Coaching for Success',i:'「能培养出好下属」'}},
+  {id:'D3',nm:'跨部门协作',df:'主动建立跨团队合作关系，有效协调多方资源与利益诉求，推动跨部门重要项目有效落地。',pri:'core',ok:false,src:{s:'协作效率提升',f:'富兰克林柯维协同增效',i:'「最怕各自为政」'}},
+  {id:'D4',nm:'执行与交付',df:'将计划转化为具体行动，合理配置资源，持续追踪关键节点，确保目标按时按质完成承诺。',pri:'important',ok:false,src:{s:'执行力提升',f:'美世 Execution Focus',i:null}},
+  {id:'D5',nm:'沟通影响力',df:'根据不同对象调整表达策略，清晰传递信息，有效影响他人行动，建立可信赖的合作关系。',pri:'important',ok:false,src:{s:null,f:'DDI Interaction Management',i:'「有感召力」'}},
+];
+const MOCK_ALTS = [
+  {id:'D6',nm:'变革管理',df:'引领组织变革，帮助团队在不确定环境中保持积极心态和行动力。',pri:'supplementary',added:false},
+  {id:'D7',nm:'客户导向',df:'深刻理解客户需求，在决策中优先考虑客户视角，持续优化服务体验。',pri:'supplementary',added:false},
+  {id:'D8',nm:'数据决策',df:'基于数据分析洞察业务趋势，做出科学合理的管理决策。',pri:'supplementary',added:false},
+];
+
+/**
+ * 描述对象结构：
+ * { id, desc(描述正文), qc:{ ok, issues:[] }, em(编辑模式), rm(重生成模式) }
+ */
+const MOCK_DESCS = [
+  {id:'D1',desc:'在中层管理者层级，战略引领体现在能深度理解公司战略意图，将其转化为本部门年度目标和季度优先级，定期向团队解读战略背景，确保成员理解日常工作与战略的连接，保持执行方向不偏离。',qc:{ok:true,issues:[]},em:false,rm:false},
+  {id:'D2',desc:'聚焦团队成员的能力成长，通过定期 1on1 识别个人瓶颈，结合项目历练给予针对性辅导，在关键决策中有意识地授权，使成员在承担责任中快速成长，形成自我驱动的学习氛围。',qc:{ok:true,issues:[]},em:false,rm:false},
+  {id:'D3',desc:'主动识别跨部门协作节点，建立定期同步机制，在资源冲突和利益分歧出现时介入斡旋，确保己方需求清晰传递，推动多方达成共识，减少因信息不对称带来的摩擦和延误。',qc:{ok:false,issues:['[空泛词汇] 「及时」建议改为可量化描述，如「发现分歧后24小时内」']},em:false,rm:false},
+  {id:'D4',desc:'将团队目标拆解至每位成员的具体任务，明确时间节点与交付标准，每周追踪关键里程碑，遇到执行偏差当天启动资源协调，确保承诺按期高质量完成。',qc:{ok:true,issues:[]},em:false,rm:false},
+  {id:'D5',desc:'根据汇报对象灵活调整沟通策略：向上聚焦结论和风险，横向强调共同利益，向下重在拆解和激励，确保信息准确传递并被对方真正理解和采纳。',qc:{ok:true,issues:[]},em:false,rm:false},
+];
+
+/**
+ * 行为锚定对象结构：
+ * { id, nm, ex:[], st:[], bl:[] }  分别为 优秀/达标/不达标
+ */
+const MOCK_ANCHORS = [
+  {id:'D1',nm:'战略引领',ex:['每季度主动梳理战略执行差距，制定针对性调整方案并向上汇报，推动资源提前到位，确保团队执行方向持续对齐公司战略。'],st:['每月召开部门战略对齐会，将公司战略拆解为本月工作重点，确保成员清楚自身工作的战略意义。','遇到战略方向变化时，主动组织宣贯，解答成员疑惑，减少执行中的方向摇摆和意义感缺失。'],bl:['仅在上级传达时被动了解战略变化，未主动向团队传导，导致执行方向与公司战略出现明显落差。','将战略目标直接下发，未做拆解说明，成员不理解工作意义，执行主动性明显不足。']},
+  {id:'D2',nm:'团队赋能',ex:['针对每位核心成员建立个人发展档案，结合业务项目设计成长路径，辅导成功率超过80%，被辅导成员绩效持续提升。'],st:['每双周与每位成员开展 1on1，了解工作卡点和成长需求，提供具体建议并跟踪落实情况。','在分配任务时有意识地授权，给予成员在安全范围内试错的机会，并在复盘时给出建设性反馈。'],bl:['成员反映缺乏辅导和反馈，对自身能力瓶颈不清楚，遇到困难只能靠自己摸索解决。','任务分配后不再关注过程，待问题出现才介入，错失最佳辅导时机。']},
+  {id:'D3',nm:'跨部门协作',ex:['主动识别跨部门项目风险，提前2周启动协调，推动各方达成资源承诺，项目交付准时率显著高于同级平均。'],st:['在项目启动阶段对齐各相关方的需求和约束，建立共同工作规则，减少执行中的摩擦。','遇到跨部门分歧时，主动约集双方面对面沟通，聚焦共同目标而非立场，推动达成可行方案。'],bl:['跨部门协作中仅关注本团队需求，对其他团队的约束缺乏了解，导致方案推进阻力大。','遇到跨部门问题习惯向上升级，而非主动在平级层面解决，增加管理层协调成本。']},
+  {id:'D4',nm:'执行与交付',ex:['每周主动梳理关键路径，识别潜在风险并提前3天预警，带方案汇报，推动关键里程碑零延误。'],st:['将季度目标拆解为每周任务清单，明确负责人和截止时间，每周同步进展并记录风险项。','遇到执行阻碍当天启动协调，超过48小时未解决的风险主动向上汇报，不拖延处理。'],bl:['任务分配后缺乏跟踪，仅在截止日期临近才发现滞后，频繁以「没想到」为由进行事后解释。','对承诺事项管理宽松，成员未完成也未追责，团队整体交付可靠性差。']},
+  {id:'D5',nm:'沟通影响力',ex:['在重大决策推进中，提前识别各方关切，设计分层沟通方案，有效化解阻力，方案落地率高于同级平均。'],st:['向上汇报时先结论后细节，清晰呈现核心选项及利弊，便于上级快速决策。','横向协作时主动换位思考对方立场，找到利益共同点作为切入，而非直接提要求或施压。'],bl:['汇报时缺乏重点，信息冗长且逻辑不清，上级需要反复追问才能了解核心问题。','横向协作中采用命令式而非协商式沟通，引发合作方抵触情绪，协作摩擦持续存在。']},
+];
+
+/* ════════════════════════════════════════════════════════════
+   4. Anthropic API 封装
+   生产环境通过后端代理注入 API Key，禁止前端直接持有密钥
+════════════════════════════════════════════════════════════ */
+
+/**
+ * 通用 Claude 消息调用
+ * @param {string} sys - System prompt
+ * @param {Array}  messages - [{ role, content }]
+ * @param {number} maxTokens
+ * @returns {Promise<string>}
+ */
+async function callClaude(sys, messages, maxTokens = 1000) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      system: sys,
+      messages,
+    }),
+  });
+  const data = await resp.json();
+  if (!data.content) throw new Error(data.error?.message || 'API 异常');
+  return data.content.map(c => c.text || '').join('');
+}
+
+/** 文档分析专用提示词 */
+const DOC_ANALYSIS_SYS = `你是一名领导力建模顾问，负责从企业文档中提取与领导力建模相关的核心信息。
+严格按以下格式输出，内容简洁、信息密度高：
+
+【战略关键词】：3-8个战略方向关键词（逗号分隔）
+【高绩效行为特征】：2-4条高绩效管理者典型行为描述
+【能力要求关键词】：文档中出现的管理者能力要求关键词（逗号分隔）
+【建模参考重点】：1-2条最值得纳入领导力模型的核心洞察
+
+用中文回答，每项不超过150字。文档内容不足时如实说明。`;
+
+/* ════════════════════════════════════════════════════════════
+   5. 路由 & 导航
+════════════════════════════════════════════════════════════ */
+function navigate(step) {
+  if (step < 1 || step > 5) return;
+  STATE.step = step;
+  renderHeader();
+  renderFooter();
+  [null, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5][step]();
+  window.scrollTo(0, 0);
+  localStorage.setItem('lm_step', step);
+}
+
+function renderHeader() {
+  const s = STATE.step;
+  let prog = '';
+  STEP_LABELS.forEach((l, i) => {
+    const n = i + 1;
+    const cls = n < s ? 'done' : n === s ? 'active' : 'pending';
+    const dot = n < s ? '✓' : n;
+    const lbl = n < s ? '' : `<span class="pl ${n===s?'active':''}">${l}</span>`;
+    prog += `<div class="ps" onclick="navigate(${n})">
+      <div class="pd ${cls}">${dot}</div>${lbl}
+    </div>`;
+    if (i < 4) prog += `<div class="pline ${n < s ? 'done' : ''}"></div>`;
+  });
+  document.getElementById('hdr').innerHTML = `
+    <span class="logo" onclick="navigate(1)"><span class="logo-dot"></span>领导力建模智能体</span>
+    <nav class="prog">${prog}</nav>`;
+}
+
+function renderFooter() {
+  const s = STATE.step;
+  const back = s > 1
+    ? `<button class="btn btn-o" onclick="navigate(${s-1})">← 上一步</button>`
+    : `<span></span>`;
+  const nxtLabels = ['','确认摘要，生成维度 →','确认维度，生成描述 →','确认描述，生成行为锚定 →','完成确认，查看总览 →',''];
+  const canGo = canProceed();
+  const nxt = s < 5
+    ? `<button class="btn btn-p" onclick="goNext()" ${canGo?'':'disabled'}>${nxtLabels[s]}</button>`
+    : `<div style="display:flex;gap:9px">
+        <button class="btn-word btn" onclick="doExport('word')">⬇ 导出 Word</button>
+        <button class="btn-pdf btn" onclick="doExport('pdf')">⬇ 导出 PDF</button>
+        <button class="btn btn-o" onclick="navigate(1)">重新建模</button>
+       </div>`;
+  document.getElementById('ftr').innerHTML = `
+    ${back}
+    <span class="step-badge">步骤 ${s} / 5 — ${STEP_LABELS[s-1]}</span>
+    ${nxt}`;
+}
+
+function canProceed() {
+  const s = STATE.step;
+  if (STATE.loading) return false;
+  if (s === 1) return STATE.summaryConfirmed;
+  if (s === 2) return STATE.dims.filter(d => d.ok).length >= 3;
+  if (s === 3) return STATE.descs.length > 0;
+  if (s === 4) return STATE.anchors.length > 0;
+  return true;
+}
+
+function goNext() {
+  if (!canProceed()) return;
+  const next = STATE.step + 1;
+  if (next >= 3 && next <= 4) {
+    STATE.loading = true;
+    renderFooter();
+    const ldgColors = ['','','#0F6E56','#993C1D','#854F0B'];
+    document.getElementById('main').innerHTML = `
+      <div class="ldg">
+        <div style="font-size:32px;margin-bottom:8px">✨</div>
+        <div class="ldots">
+          <span style="background:${ldgColors[next]}"></span>
+          <span style="background:${ldgColors[next]}"></span>
+          <span style="background:${ldgColors[next]}"></span>
+        </div>
+        <div style="font-size:13.5px;margin-top:4px">
+          ${['','','AI 正在生成维度定位描述…','AI 正在生成 BARS 行为锚定…',''][next]}
+        </div>
+      </div>`;
+    setTimeout(() => { STATE.loading = false; navigate(next); }, 1300);
+  } else {
+    navigate(next);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   6. STEP 1 — 信息采集 & 文档上传
+════════════════════════════════════════════════════════════ */
+function renderStep1() {
+  // 初始化数据
+  if (!STATE.dims.length) { STATE.dims = MOCK_DIMS.map(d => ({...d, ok:false})); }
+  if (!STATE.alts.length) { STATE.alts = MOCK_ALTS.map(a => ({...a, added:false})); }
+  if (!STATE.descs.length){ STATE.descs = MOCK_DESCS.map(d => ({...d, em:false, rm:false})); }
+  if (!STATE.anchors.length){ STATE.anchors = MOCK_ANCHORS.map(a => ({...a})); }
+
+  document.getElementById('main').innerHTML = `
+    <div class="lcard">
+      <b>信息采集阶段（M01）</b>
+      <p>通过 AI 引导式对话收集企业背景、建模层级和优秀管理者画像。右侧支持上传战略文档、JD、绩效报告，AI 自动解析关键信息并融入建模上下文。</p>
+    </div>
+    <div class="s1-grid">
+      <div class="chat-pane">
+        <div class="chat-ttl">
+          <span class="chat-ttl-main">🤖 AI 引导对话</span>
+          <span class="chat-ttl-sub" id="chat-prog">第 0 / 6 步</span>
+        </div>
+        <div class="chat-msgs" id="cmsgs"></div>
+        <div class="chat-foot">
+          <textarea class="ci" id="ci" placeholder="输入您的回答，Enter 发送…"
+            rows="2" onkeydown="chatKD(event)"></textarea>
+          <button class="csend" onclick="chatSend()">发送 ↑</button>
+        </div>
+      </div>
+      <div class="right-pane" id="rpane">
+        <div class="sum-card">
+          <div class="sum-hd">📋 建模信息进度</div>
+          <div class="sum-bd" id="sbd">
+            <div style="font-size:12px;color:var(--t3);text-align:center;padding:18px 0;line-height:1.7">
+              通过左侧对话采集信息后<br>摘要自动出现在这里
+            </div>
+          </div>
+        </div>
+        <div class="upload-card">
+          <div class="upload-hd">📎 上传参考文档 <span>PDF · Word · TXT</span></div>
+          <div class="dropzone" id="dz"
+            ondragover="dzEv(event,'over')" ondragleave="dzEv(event,'leave')" ondrop="dzEv(event,'drop')">
+            <input class="file-input-real" type="file" id="fInput"
+              accept=".txt,.pdf,.docx,.doc,.md" multiple onchange="handleSel(this.files)">
+            <div style="font-size:24px;margin-bottom:6px">📄</div>
+            <p>拖拽文件至此，或 <b>点击选择</b></p>
+            <small>战略文档 · JD · 绩效报告（最大 10 MB）</small>
+          </div>
+          <div class="fl" id="fl"></div>
+        </div>
+      </div>
+    </div>`;
+
+  renderChatMsgs();
+  if (!STATE.chatMsgs.length) {
+    setTimeout(() => { addMsg('ai', CHAT_SCRIPT[0]); }, 350);
+  }
+}
+
+/** 添加消息并滚动到底 */
+function addMsg(role, html) {
+  STATE.chatMsgs.push({ role, html });
+  renderChatMsgs();
+}
+function renderChatMsgs() {
+  const el = document.getElementById('cmsgs'); if (!el) return;
+  el.innerHTML = STATE.chatMsgs.map(m => {
+    if (m.role === 'user') {
+      return `<div class="msg user"><div class="bub bub-user">${m.html}</div></div>`;
+    } else if (m.role === 'doc') {
+      return `<div class="msg doc"><div class="av av-doc">📄</div><div class="bub bub-doc">${m.html}</div></div>`;
+    }
+    return `<div class="msg ai"><div class="av av-ai">🤖</div><div class="bub bub-ai">${m.html}</div></div>`;
+  }).join('');
+  el.scrollTop = 99999;
+}
+
+function chatKD(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); } }
+
+let chatBusy = false;
+function chatSend() {
+  if (chatBusy) return;
+  const ci = document.getElementById('ci');
+  const t = ci.value.trim(); if (!t) return;
+  ci.value = '';
+  addMsg('user', t);
+  STATE.chatIdx++;
+  const prog = document.getElementById('chat-prog');
+  if (prog) prog.textContent = `第 ${Math.min(STATE.chatIdx, 6)} / 6 步`;
+  if (STATE.chatIdx > 6) return;
+  chatBusy = true;
+  // 显示打字中
+  const msgs = document.getElementById('cmsgs');
+  const ti = document.createElement('div');
+  ti.className = 'msg ai'; ti.id = 'typing';
+  ti.innerHTML = `<div class="av av-ai">🤖</div><div class="typing"><span style="background:var(--p40)"></span><span style="background:var(--p40)"></span><span style="background:var(--p40)"></span></div>`;
+  msgs && msgs.appendChild(ti) && (msgs.scrollTop = 99999);
+  setTimeout(() => {
+    document.getElementById('typing')?.remove();
+    if (STATE.chatIdx === 6) showSummary();
+    else addMsg('ai', CHAT_SCRIPT[STATE.chatIdx]);
+    chatBusy = false;
+  }, 700 + Math.random() * 350);
+}
+
+function showSummary() {
+  const docNote = STATE.docContext.length
+    ? `<br><br>✅ 已融合 <strong>${STATE.docContext.length} 份文档</strong>的解析关键信息。`
+    : '';
+  addMsg('ai',
+    '我已整理好建模背景摘要，请确认是否准确：<br><br>' +
+    Object.entries(MOCK_SUMMARY).map(([k,v]) => `<strong>${k}</strong>：${v}`).join('<br>') + docNote
+  );
+  const bd = document.getElementById('sbd');
+  if (bd) {
+    let html = Object.entries(MOCK_SUMMARY).map(([k,v]) =>
+      `<div class="sf3"><div class="sf3-l">${k}</div><div class="sf3-v">${v}</div></div>`
+    ).join('');
+    if (STATE.docContext.length) {
+      html += `<div class="sf3" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--br)">
+        <div class="sf3-l" style="color:var(--adk)">📎 文档融入</div>
+        <div class="sf3-v" style="font-size:11.5px;color:var(--t2)">${STATE.docContext.join('；')}</div>
+      </div>`;
+    }
+    bd.innerHTML = html;
+  }
+  const rp = document.getElementById('rpane');
+  if (rp) {
+    const cb = document.createElement('div');
+    cb.className = 'confirm-ok';
+    cb.innerHTML = '✅ 摘要已确认，点击右下角进入下一步';
+    rp.insertBefore(cb, rp.firstChild);
+  }
+  STATE.summaryConfirmed = true;
+  renderFooter();
+}
+
+/* —— 文件上传 —— */
+function dzEv(e, t) {
+  e.preventDefault(); e.stopPropagation();
+  const dz = document.getElementById('dz');
+  if (t === 'over') dz.classList.add('over');
+  else if (t === 'leave') dz.classList.remove('over');
+  else { dz.classList.remove('over'); handleFiles(e.dataTransfer.files); }
+}
+function handleSel(files) { handleFiles(files); }
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    if (f.size > 10 * 1024 * 1024) { showToast(`${f.name} 超过 10MB`, 'err'); return; }
+    const id = 'f' + Date.now() + Math.random().toString(36).slice(2, 6);
+    STATE.uploadFiles.push({ id, file: f, status: 'pending', result: null });
+    renderFileList();
+  });
+}
+
+function renderFileList() {
+  const fl = document.getElementById('fl'); if (!fl) return;
+  fl.innerHTML = STATE.uploadFiles.map(rec => fileItemHTML(rec)).join('');
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function fIcon(n) {
+  if (/\.pdf$/i.test(n)) return '📕';
+  if (/\.docx?$/i.test(n)) return '📘';
+  return '📄';
+}
+function stCls(s) { return {pending:'st-pend',loading:'st-load',done:'st-done',error:'st-err'}[s]; }
+function stLbl(s) { return {pending:'待解析',loading:'解析中…',done:'✓ 完成',error:'解析失败'}[s]; }
+
+function fileItemHTML(rec) {
+  const f = rec.file;
+  let actions = '';
+  if (rec.status === 'pending' || rec.status === 'error') {
+    actions = `<button onclick="analyzeFile('${rec.id}')">🔍 AI 解析</button>
+               <button onclick="removeFile('${rec.id}')">删除</button>`;
+  } else if (rec.status === 'loading') {
+    actions = `<div class="pbar"><div class="pbar-fill" id="pb_${rec.id}" style="width:25%"></div></div>`;
+  } else if (rec.status === 'done') {
+    actions = `<button onclick="toggleResult('${rec.id}')">查看结果 ↕</button>
+               <button onclick="removeFile('${rec.id}')">删除</button>`;
+  }
+  const resHtml = rec.result
+    ? `<div class="fi-res" id="res_${rec.id}">${formatAnalysis(rec.result)}</div>` : '';
+  return `<div class="fi" id="fi_${rec.id}">
+    <span class="fi-ico">${fIcon(f.name)}</span>
+    <div class="fi-info">
+      <div class="fi-name" title="${f.name}">${f.name}</div>
+      <div class="fi-meta">${fmtSize(f.size)}</div>
+      <div class="fi-act">${actions}</div>
+    </div>
+    <span class="fi-st ${stCls(rec.status)}">${stLbl(rec.status)}</span>
+  </div>${resHtml}`;
+}
+
+function updateFileItem(rec) {
+  const old = document.getElementById('fi_' + rec.id);
+  const oldRes = document.getElementById('res_' + rec.id);
+  if (old) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = fileItemHTML(rec);
+    old.replaceWith(wrapper.children[0]);
+    if (oldRes) { oldRes.remove(); }
+    // Re-insert result if exists
+    if (rec.result) {
+      const newFi = document.getElementById('fi_' + rec.id);
+      const resDiv = document.createElement('div');
+      resDiv.className = 'fi-res';
+      resDiv.id = 'res_' + rec.id;
+      resDiv.innerHTML = formatAnalysis(rec.result);
+      newFi && newFi.insertAdjacentElement('afterend', resDiv);
+    }
+  }
+}
+
+function removeFile(id) {
+  STATE.uploadFiles = STATE.uploadFiles.filter(r => r.id !== id);
+  document.getElementById('fi_' + id)?.remove();
+  document.getElementById('res_' + id)?.remove();
+}
+
+function toggleResult(id) {
+  document.getElementById('res_' + id)?.classList.toggle('show');
+}
+
+function formatAnalysis(text) {
+  let html = '<div style="font-size:12px;font-weight:600;color:var(--adk);margin-bottom:8px">📊 文档解析结果</div>';
+  const parts = text.split(/【(.+?)】/).filter(Boolean);
+  if (parts.length > 1) {
+    for (let i = 0; i < parts.length; i += 2) {
+      html += `<div style="margin-bottom:9px">
+        <div style="font-size:11px;font-weight:600;color:var(--p80);margin-bottom:3px">【${parts[i]}】</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.65">${(parts[i+1]||'').trim()}</div>
+      </div>`;
+    }
+  } else {
+    html += `<div style="font-size:12px;color:var(--t2);line-height:1.65">${text.replace(/\n/g,'<br>')}</div>`;
+  }
+  return html;
+}
+
+async function analyzeFile(id) {
+  const rec = STATE.uploadFiles.find(r => r.id === id); if (!rec) return;
+  rec.status = 'loading';
+  updateFileItem(rec);
+  // 动画进度条
+  let pct = 20;
+  const iv = setInterval(() => {
+    pct = Math.min(pct + 7, 85);
+    const pb = document.getElementById('pb_' + id);
+    if (pb) pb.style.width = pct + '%';
+  }, 350);
+  try {
+    const content = await readFileContent(rec.file);
+    clearInterval(iv);
+    const result = await callClaudeDoc(content, rec.file.name);
+    rec.result = result; rec.status = 'done';
+    const kwMatch = result.match(/【战略关键词】[：:]\s*(.{0,80})/);
+    if (kwMatch) STATE.docContext.push(kwMatch[1].split(/[，,]/)[0].trim());
+    updateFileItem(rec);
+    toggleResult(id);
+    addMsg('doc',
+      `📄 <strong>${rec.file.name}</strong> 已解析完成，关键信息已注入建模上下文。` +
+      (kwMatch ? `<br>发现战略关键词：${kwMatch[1].slice(0,60)}…` : '')
+    );
+    showToast(`${rec.file.name} 解析完成`, 'ok');
+  } catch (err) {
+    clearInterval(iv);
+    rec.status = 'error'; updateFileItem(rec);
+    addMsg('ai', `⚠️ 解析 <strong>${rec.file.name}</strong> 时遇到问题：${err.message || '请检查文件格式后重试'}。`);
+    showToast('解析失败：' + (err.message || '未知错误'), 'err');
+  }
+}
+
+async function callClaudeDoc(content, filename) {
+  let messages;
+  if (content.type === 'pdf') {
+    messages = [{ role:'user', content:[
+      { type:'document', source:{ type:'base64', media_type:'application/pdf', data:content.data }},
+      { type:'text', text:`请分析这份PDF（文件名：${filename}），提取与领导力建模相关的核心信息。` }
+    ]}];
+  } else {
+    const text = (content.text || '').slice(0, 8000);
+    messages = [{ role:'user', content:`分析以下文档，提取领导力建模核心信息。\n文件名：${filename}\n\n${text}` }];
+  }
+  return callClaude(DOC_ANALYSIS_SYS, messages, 1000);
+}
+
+async function readFileContent(file) {
+  const n = file.name.toLowerCase();
+  if (n.endsWith('.pdf') || file.type === 'application/pdf') {
+    return { type:'pdf', data: await toB64(file) };
+  }
+  if (n.endsWith('.docx') || n.endsWith('.doc')) {
+    const buf = await rdBuf(file);
+    if (typeof mammoth !== 'undefined') {
+      const r = await mammoth.extractRawText({ arrayBuffer: buf });
+      return { type:'text', text: r.value };
+    }
+    return { type:'text', text:'[DOCX - mammoth.js 未加载，请稍后重试]' };
+  }
+  return { type:'text', text: await rdTxt(file) };
+}
+const toB64 = f => new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(f); });
+const rdBuf = f => new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(f); });
+const rdTxt = f => new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(f,'UTF-8'); });
+
+/* ════════════════════════════════════════════════════════════
+   7. STEP 2 — 维度确认
+════════════════════════════════════════════════════════════ */
+function renderStep2() {
+  const ok = STATE.dims.filter(d => d.ok).length;
+  const priMap = { core:['bg-gr','核心'], important:['bg-a','重要'], supplementary:['bg-gy','补充'] };
+  const cards = STATE.dims.map(d => {
+    const [bc, bl] = priMap[d.pri] || ['bg-gy','补充'];
+    const srcs = [];
+    if (d.src.s) srcs.push(`<span class="src-tag" style="background:var(--grbg);color:var(--gr)">${d.src.s}</span>`);
+    if (d.src.f) srcs.push(`<span class="src-tag" style="background:var(--p10);color:var(--p80)">${d.src.f}</span>`);
+    if (d.src.i) srcs.push(`<span class="src-tag" style="background:var(--a10);color:var(--adk)">${d.src.i}</span>`);
+    return `<div class="dc ${d.ok?'ok':''}" id="dc_${d.id}">
+      <div class="dc-hd"><div class="dc-nm">${d.nm}</div><span class="badge ${bc}">${bl}</span></div>
+      <div class="dc-df">${d.df}</div>
+      ${srcs.length ? `<div class="dc-src">${srcs.join('')}</div>` : ''}
+      <div class="dc-ft">
+        <button class="btn btn-sm" style="${d.ok?'background:var(--gr);color:#fff;border-color:var(--gr)':'background:var(--p);color:#fff;border-color:var(--p)'}" onclick="togOk('${d.id}')">${d.ok?'✓ 已确认':'确认'}</button>
+        <button class="btn btn-g btn-sm" onclick="openDimModal('${d.id}')">编辑</button>
+        <button class="btn btn-d btn-sm" onclick="delDim('${d.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+  const altChips = STATE.alts.filter(a => !a.added).map(a =>
+    `<div class="alt-chip" onclick="addAlt('${a.id}')" title="${a.df}">+ ${a.nm}</div>`
+  ).join('');
+
+  document.getElementById('main').innerHTML = `
+    <div class="lcard"><b>维度生成与确认（M02）— 第一次人机交接</b>
+    <p>AI 已基于企业背景生成维度框架，请逐一确认、修改或删除。至少确认 3 个维度才能进入下一步。</p></div>
+    <div class="sec-row">
+      <div><div class="sec-t">领导力维度框架</div>
+      <div class="sec-s" id="okCnt">已确认 <strong style="color:var(--gr)">${ok}</strong> / ${STATE.dims.length} 个${ok>=3?' · ✓ 可进入下一步':' · 至少需确认 3 个'}</div></div>
+      <button class="btn btn-o btn-sm" onclick="okAll()">全部确认</button>
+    </div>
+    <div class="dim-grid">${cards}</div>
+    ${altChips ? `<div class="alt-wrap">
+      <div class="alt-ttl">＋ 备选维度池 <span style="font-size:11.5px;font-weight:400;color:var(--t3)">点击添加</span></div>
+      <div class="alt-chips">${altChips}</div>
+    </div>` : ''}`;
+}
+
+function togOk(id) { const d=STATE.dims.find(x=>x.id===id); if(d)d.ok=!d.ok; renderStep2(); renderFooter(); }
+function okAll() { STATE.dims.forEach(d=>d.ok=true); renderStep2(); renderFooter(); }
+function delDim(id) { STATE.dims=STATE.dims.filter(x=>x.id!==id); renderStep2(); renderFooter(); }
+function addAlt(id) { const a=STATE.alts.find(x=>x.id===id); if(a){a.added=true;STATE.dims.push({...a,ok:false});} renderStep2(); renderFooter(); }
+
+function openDimModal(id) {
+  const d = STATE.dims.find(x=>x.id===id); if (!d) return;
+  STATE.modal = { type:'dim', id };
+  document.getElementById('modal-title').textContent = '编辑维度';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="ff"><label>维度名称</label><input id="m-nm" value="${d.nm}"></div>
+    <div class="ff"><label>定义说明（2-3句话）</label><textarea id="m-df" rows="3">${d.df}</textarea></div>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+/* ════════════════════════════════════════════════════════════
+   8. STEP 3 — 描述建立
+════════════════════════════════════════════════════════════ */
+function renderStep3() {
+  const okDims = STATE.dims.filter(d=>d.ok).map(d=>d.id);
+  const visible = STATE.descs.filter(d => okDims.includes(d.id));
+  const items = visible.map(d => {
+    const nm = STATE.dims.find(x=>x.id===d.id)?.nm || d.id;
+    const ok = d.qc.ok && !d.qc.issues.length;
+    return `<div class="di">
+      <div class="di-hd">
+        <div class="di-nm">${nm}</div>
+        <span class="badge ${ok?'bg-gr':'bg-am'}">${ok?'✅ 质检通过':'⚠️ 建议审阅'}</span>
+      </div>
+      ${d.em
+        ? `<div class="di-ea">
+            <textarea id="ta_${d.id}" rows="3">${d.desc}</textarea>
+            <div style="display:flex;gap:7px;margin-top:8px">
+              <button class="btn btn-p btn-sm" onclick="saveDesc('${d.id}')">保存</button>
+              <button class="btn btn-o btn-sm" onclick="cancelDesc('${d.id}')">取消</button>
+            </div>
+           </div>`
+        : `<div class="di-txt" onclick="editDesc('${d.id}')" title="点击编辑">${d.desc}</div>
+           ${d.qc.issues.map(i=>`<div class="di-iss">⚠️ ${i}</div>`).join('')}
+           <div class="di-ft">
+             <button class="btn btn-g btn-sm" onclick="editDesc('${d.id}')">✏️ 编辑</button>
+             <button class="btn btn-g btn-sm" onclick="togRegen('${d.id}')">🔄 重新生成</button>
+           </div>
+           ${d.rm ? `<div class="regen-row">
+             <input id="rd_${d.id}" placeholder="输入修改方向，如：更聚焦业务结果…">
+             <button class="regen-btn" onclick="regenDesc('${d.id}')">生成</button>
+           </div>` : ''}`
+      }
+    </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML = `
+    <div class="lcard"><b>维度描述建立（M03）— 第二次人机交接</b>
+    <p>AI 已为每个维度生成针对中层管理者的定位描述。⚠️ 含质检提示。点击描述文字直接编辑，或输入方向重新生成。</p></div>
+    <div class="sec-row"><div class="sec-t">维度定位描述</div></div>
+    <div class="desc-list">${items}</div>`;
+}
+
+function editDesc(id) { STATE.descs.forEach(d=>d.em=d.id===id); renderStep3(); setTimeout(()=>document.getElementById('ta_'+id)?.focus(),50); }
+function cancelDesc(id) { const d=STATE.descs.find(x=>x.id===id); if(d)d.em=false; renderStep3(); }
+function saveDesc(id) {
+  const d=STATE.descs.find(x=>x.id===id); if(!d)return;
+  d.desc=document.getElementById('ta_'+id).value; d.em=false; d.qc={ok:true,issues:[]};
+  renderStep3();
+}
+function togRegen(id) {
+  const d=STATE.descs.find(x=>x.id===id); if(!d)return;
+  d.rm=!d.rm; renderStep3();
+  setTimeout(()=>document.getElementById('rd_'+id)?.focus(),50);
+}
+function regenDesc(id) {
+  const d=STATE.descs.find(x=>x.id===id); if(!d)return;
+  const dir=document.getElementById('rd_'+id)?.value||'优化表述';
+  const nm=STATE.dims.find(x=>x.id===id)?.nm||'该维度';
+  d.rm=false; d.desc='⏳ 重新生成中…'; renderStep3();
+  setTimeout(()=>{
+    d.desc=`根据「${dir}」方向：在中层管理者层级，${nm}要求管理者能够系统性展现相关能力，结合业务特点转化为可观察的具体行动和可衡量的成果，并定期复盘持续优化。`;
+    d.qc={ok:true,issues:[]}; renderStep3();
+  }, 1100);
+}
+
+/* ════════════════════════════════════════════════════════════
+   9. STEP 4 — 行为锚定
+════════════════════════════════════════════════════════════ */
+function renderStep4() {
+  const okDims = STATE.dims.filter(d=>d.ok).map(d=>d.id);
+  const visible = STATE.anchors.filter(a => okDims.includes(a.id));
+  const items = visible.map((a,i) => {
+    const isOpen = STATE.openAnchors[a.id] !== false && (i===0 || STATE.openAnchors[a.id]);
+    return `<div class="anc-item">
+      <div class="anc-hd" onclick="togAnc('${a.id}')">
+        <span class="anc-chev ${isOpen?'open':''}" id="chv_${a.id}">▶</span>
+        <span class="anc-nm">${a.nm}</span>
+        <span class="badge bg-gy">${a.ex.length+a.st.length+a.bl.length} 条行为</span>
+      </div>
+      <div class="anc-bd ${isOpen?'open':''}" id="abd_${a.id}">
+        <div class="anc-cols">
+          <div>
+            <div class="col-hd col-ex">⭐ 优秀水平</div>
+            ${a.ex.map((t,j)=>`<div class="beh" contenteditable="true"
+              onblur="saveBeh('${a.id}','ex',${j},this.textContent)">${t}</div>`).join('')}
+          </div>
+          <div>
+            <div class="col-hd col-st">✅ 达标水平</div>
+            ${a.st.map((t,j)=>`<div class="beh" contenteditable="true"
+              onblur="saveBeh('${a.id}','st',${j},this.textContent)">${t}</div>`).join('')}
+          </div>
+          <div>
+            <div class="col-hd col-bl">⚠️ 不达标</div>
+            ${a.bl.map((t,j)=>`<div class="beh" contenteditable="true"
+              onblur="saveBeh('${a.id}','bl',${j},this.textContent)">${t}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML = `
+    <div class="lcard"><b>行为锚定生成（M04）— 第三次人机交接</b>
+    <p>AI 已生成 BARS 行为锚定（优秀 / 达标 / 不达标三档）。点击展开每个维度，直接点击行为描述进行编辑，所有描述须以行为动词开头。</p></div>
+    <div class="sec-row"><div class="sec-t">行为锚定（BARS）</div>
+    <div class="sec-s">点击展开查看并编辑各维度行为描述</div></div>
+    <div class="anc-acc">${items}</div>`;
+}
+
+function togAnc(id) {
+  STATE.openAnchors[id] = !STATE.openAnchors[id];
+  const bd=document.getElementById('abd_'+id); const chv=document.getElementById('chv_'+id);
+  if(bd) bd.classList.toggle('open');
+  if(chv) { chv.classList.toggle('open'); chv.textContent=chv.classList.contains('open')?'▼':'▶'; }
+}
+function saveBeh(aid, lv, idx, text) {
+  const a=STATE.anchors.find(x=>x.id===aid); if(a&&a[lv]) a[lv][idx]=text.trim();
+}
+
+/* ════════════════════════════════════════════════════════════
+   10. STEP 5 — 总览导出
+════════════════════════════════════════════════════════════ */
+function renderStep5() {
+  const okDims = STATE.dims.filter(d=>d.ok).map(d=>d.id);
+  const visAnchors = STATE.anchors.filter(a=>okDims.includes(a.id));
+  const total = visAnchors.reduce((n,a)=>n+a.ex.length+a.st.length+a.bl.length, 0);
+  const now = new Date();
+  const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  const ovItems = visAnchors.map((a,i) => {
+    const desc = STATE.descs.find(d=>d.id===a.id);
+    const isOpen = STATE.openOverviews[a.id] || false;
+    return `<div class="ov-item">
+      <div class="ov-hd" onclick="togOv('${a.id}')">
+        <div class="ov-num">${i+1}</div>
+        <div class="ov-nm">${a.nm}</div>
+        <span class="ov-chev ${isOpen?'open':''}">▶</span>
+      </div>
+      <div class="ov-bd ${isOpen?'open':''}" id="ovbd_${a.id}">
+        ${desc?`<div class="ov-desc">${desc.desc}</div>`:''}
+        <div class="bsec">
+          <div class="bsec-lbl" style="color:var(--gr)">⭐ 优秀水平</div>
+          ${a.ex.map(t=>`<div class="brow brow-ex">${t}</div>`).join('')}
+        </div>
+        <div class="bsec">
+          <div class="bsec-lbl" style="color:var(--p80)">✅ 达标水平</div>
+          ${a.st.map(t=>`<div class="brow brow-st">${t}</div>`).join('')}
+        </div>
+        <div class="bsec">
+          <div class="bsec-lbl" style="color:var(--rd)">⚠️ 不达标</div>
+          ${a.bl.map(t=>`<div class="brow brow-bl">${t}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML = `
+    <div class="done-banner">
+      <div>
+        <h2>🏆 领导力模型构建完成！</h2>
+        <p>中层管理者领导力模型 · ${okDims.length} 个维度 · ${total} 条行为锚定</p>
+      </div>
+      <div class="done-btns">
+        <button class="btn-word" onclick="doExport('word')">⬇ 导出 Word</button>
+        <button class="btn-pdf" onclick="doExport('pdf')">⬇ 导出 PDF</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n">${okDims.length}</div><div class="stat-l">领导力维度</div></div>
+      <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">行为锚定描述</div></div>
+      <div class="stat"><div class="stat-n">${STATE.descs.filter(d=>d.qc.ok).length}</div><div class="stat-l">质检通过描述</div></div>
+      <div class="stat"><div class="stat-n">${timeStr}</div><div class="stat-l">完成时间</div></div>
+    </div>
+    <div class="sec-row">
+      <div class="sec-t">完整模型总览</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-o btn-sm" onclick="expandAll()">全部展开</button>
+        <button class="btn btn-o btn-sm" onclick="collapseAll()">全部收起</button>
+      </div>
+    </div>
+    <div class="ov-list">${ovItems}</div>
+    <div style="margin-top:24px;background:var(--sf);border-radius:12px;border:1px solid var(--br);
+      padding:18px 22px;text-align:center">
+      <p style="font-size:13.5px;color:var(--t2);margin-bottom:14px">需要为其他层级建模，或从头开始？</p>
+      <button class="btn btn-o" onclick="navigate(1)">← 重新建模</button>
+    </div>`;
+}
+
+function togOv(id) {
+  STATE.openOverviews[id]=!STATE.openOverviews[id];
+  const bd=document.getElementById('ovbd_'+id);
+  const chv=bd?.previousElementSibling?.querySelector('.ov-chev');
+  if(bd)bd.classList.toggle('open');
+  if(chv)chv.classList.toggle('open');
+}
+function expandAll() {
+  STATE.anchors.filter(a=>STATE.dims.find(d=>d.id===a.id&&d.ok)).forEach(a=>STATE.openOverviews[a.id]=true);
+  renderStep5();
+}
+function collapseAll() { STATE.openOverviews={}; renderStep5(); }
+function doExport(type) {
+  showToast(`正在生成 ${type==='word'?'Word (.docx)':'PDF (.pdf)'} 文档…`, 'ok');
+  setTimeout(()=>alert(
+    `✅ 导出 ${type==='word'?'Word':'PDF'} 文档\n\n《中层管理者领导力模型》\n` +
+    `包含：${STATE.dims.filter(d=>d.ok).length} 个维度 · 维度定义 · 定位描述 · 行为锚定对照表\n\n` +
+    `（原型演示模式 · 生产环境使用 docx.js 或服务端生成）`
+  ), 400);
+}
+
+/* ════════════════════════════════════════════════════════════
+   11. 模态框管理
+════════════════════════════════════════════════════════════ */
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal')) return;
+  document.getElementById('modal').classList.remove('show');
+  STATE.modal = null;
+}
+function saveModal() {
+  if (!STATE.modal) return;
+  if (STATE.modal.type === 'dim') {
+    const d = STATE.dims.find(x=>x.id===STATE.modal.id);
+    if (d) { d.nm=document.getElementById('m-nm').value; d.df=document.getElementById('m-df').value; }
+    document.getElementById('modal').classList.remove('show');
+    STATE.modal = null;
+    renderStep2(); renderFooter();
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   12. 工具函数
+════════════════════════════════════════════════════════════ */
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type==='err' ? '#991B1B' : '#1A1520';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+/* ════════════════════════════════════════════════════════════
+   13. 初始化
+════════════════════════════════════════════════════════════ */
+navigate(1);
+</script>
+</body>
+</html>

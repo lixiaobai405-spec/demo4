@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>行为锚定 - 领导力建模智能体</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.anc-acc { display: flex; flex-direction: column; gap: 11px; }
+.anc-item { background: var(--sf); border-radius: 12px; border: 1.5px solid var(--br); box-shadow: var(--sh); overflow: hidden; }
+.anc-hd { padding: 14px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; transition: background .15s; }
+.anc-hd:hover { background: var(--sf2); }
+.anc-chev { font-size: 13px; color: var(--t3); transition: transform .2s; flex-shrink: 0; }
+.anc-chev.open { transform: rotate(90deg); }
+.anc-nm { font-size: 14px; font-weight: 600; flex: 1; color: var(--t1); }
+.anc-bd { display: none; padding: 0 16px 16px; }
+.anc-bd.open { display: block; }
+.anc-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
+.col-hd { font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; margin-bottom: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.col-ex { background: var(--grbg); color: var(--gr); }
+.col-st { background: var(--p10); color: var(--p80); }
+.col-bl { background: var(--rdbg); color: var(--rd); }
+.beh { font-size: 12.5px; color: var(--t1); line-height: 1.65; padding: 8px 10px; border-radius: 7px; background: var(--bg); margin-bottom: 6px; border: 1.5px solid transparent; outline: none; display: block; width: 100%; transition: all .15s; cursor: text; }
+.beh:hover { border-color: var(--br); background: var(--sf); }
+.beh:focus { border-color: var(--p); background: var(--sf); box-shadow: 0 0 0 3px var(--p10); }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog">
+    <a class="ps" href="step1.html"><div class="pd done">✓</div><span class="pl">信息采集</span></a><div class="pline done"></div>
+    <a class="ps" href="step2.html"><div class="pd done">✓</div><span class="pl">维度确认</span></a><div class="pline done"></div>
+    <a class="ps" href="step3.html"><div class="pd done">✓</div><span class="pl">描述建立</span></a><div class="pline done"></div>
+    <a class="ps" href="step4.html"><div class="pd active">4</div><span class="pl active">行为锚定</span></a><div class="pline"></div>
+    <a class="ps" href="step5.html"><div class="pd pending">5</div><span class="pl">总览导出</span></a>
+  </nav>
+</header>
+
+<div class="main">
+  <div class="lcard">
+    <b>行为锚定生成（M04）— 第三次人机交接</b>
+    <p>AI 已为每个维度生成 BARS 行为锚定（优秀 / 达标 / 不达标三档）。展开每个维度查看详情，点击任意行为描述直接编辑，所有描述须以行为动词开头。</p>
+  </div>
+
+  <div id="loadingArea" class="ldg">
+    <div style="font-size:32px;margin-bottom:8px">✨</div>
+    <div class="ldots"><span></span><span></span><span></span></div>
+    <div style="font-size:13.5px;margin-top:4px">AI 正在生成 BARS 行为锚定…</div>
+  </div>
+
+  <div id="contentArea" class="hidden">
+    <div class="sec-row"><div class="sec-t">行为锚定（BARS）</div><div class="sec-s">点击展开查看并编辑各维度行为描述</div></div>
+    <div class="anc-acc" id="ancAcc"></div>
+  </div>
+</div>
+
+<footer class="ftr">
+  <a href="step3.html" class="btn btn-o">← 上一步</a>
+  <span class="step-info">步骤 4 / 5</span>
+  <button class="btn btn-p" id="nextBtn" onclick="goNext()">完成确认，查看总览 →</button>
+</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '/api';
+const MOCK_ANCHORS = [
+  {id:'D1',nm:'战略引领',ex:['每季度主动梳理战略执行差距，制定针对性调整方案并向上汇报，推动资源提前到位。'],st:['每月召开部门战略对齐会，将公司战略拆解为本月工作重点。','遇到战略方向变化时，主动组织宣贯，解答成员疑惑。'],bl:['仅在上级传达时被动了解战略变化，未主动向团队传导。','将战略目标直接下发，未做拆解说明，成员不理解工作意义。']},
+  {id:'D2',nm:'团队赋能',ex:['针对每位核心成员建立个人发展档案，结合业务项目设计成长路径，辅导成功率超过80%。'],st:['每双周与每位成员开展1on1，了解工作卡点和成长需求。','在分配任务时有意识地授权，给予成员试错空间。'],bl:['成员反映缺乏辅导和反馈，遇到困难只能靠自己摸索。','任务分配后不再关注过程，错失最佳辅导时机。']},
+  {id:'D3',nm:'跨部门协作',ex:['主动识别跨部门项目风险，提前2周启动协调，推动各方达成资源承诺。'],st:['在项目启动阶段对齐各相关方需求，建立共同工作规则。','遇到跨部门分歧时，主动约集双方面对面沟通。'],bl:['仅关注本团队需求，对其他团队约束缺乏了解。','遇到问题习惯向上升级，而非主动在平级层面解决。']},
+  {id:'D4',nm:'执行与交付',ex:['每周主动梳理关键路径，提前3天预警风险，带方案汇报。'],st:['将季度目标拆解为每周任务清单，明确负责人和截止时间。','遇到执行阻碍当天启动协调，不拖延处理。'],bl:['任务分配后缺乏跟踪，临近截止日期才发现滞后。','对承诺事项管理宽松，未追责。']},
+  {id:'D5',nm:'沟通影响力',ex:['在重大决策中提前识别各方关切，设计分层沟通方案，化解阻力。'],st:['向上汇报先结论后细节，便于快速决策。','横向协作时主动换位思考，找到利益共同点。'],bl:['汇报时缺乏重点，上级需反复追问。','横向协作采用命令式沟通，引发抵触。']},
+];
+
+let anchors = [];
+let openMap = {};
+
+const savedDims = localStorage.getItem('lm_dims');
+const dims = savedDims ? JSON.parse(savedDims) : [];
+const savedDescs = localStorage.getItem('lm_descs');
+const descs = savedDescs ? JSON.parse(savedDescs) : [];
+const savedAnchors = localStorage.getItem('lm_anchors');
+if (savedAnchors) {
+  try { anchors = JSON.parse(savedAnchors); } catch(e) {}
+}
+
+async function init() {
+  if (anchors.length > 0) { showContent(); return; }
+  if (dims.length === 0) { anchors = MOCK_ANCHORS; showContent(); return; }
+
+  const companyInfo = localStorage.getItem('lm_company_info') || '';
+  const level = companyInfo ? (JSON.parse(companyInfo)['建模层级'] || '中层管理者') : '中层管理者';
+
+  // Build dimensions with descriptions for context
+  const dimsWithDescs = dims.map(d => {
+    const desc = descs.find(dd => dd.id === d.id);
+    return { ...d, description: desc ? desc.desc : '' };
+  });
+
+  try {
+    const resp = await fetch(`${API}/generate-anchors`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    const jsonStr = data.result.replace(/```json\n?|```/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    anchors = (parsed.anchors || []).map(a => ({
+      id: a.dimension_id,
+      nm: a.dimension_name,
+      ex: a.excellent || [],
+      st: a.standard || [],
+      bl: a.below || []
+    }));
+    if (anchors.length === 0) anchors = MOCK_ANCHORS;
+  } catch (err) {
+    console.error('AI generation failed, using mock:', err);
+    anchors = dims.map(d => ({
+      id: d.id, nm: d.nm,
+      ex: [`在${d.nm}方面表现卓越，主动引领变革并取得突破性成果。`],
+      st: [`在${d.nm}方面稳定达标，按照规范完成各项工作要求。`, `能够运用${d.nm}相关能力应对日常管理挑战。`],
+      bl: [`在${d.nm}方面存在明显不足，需要加强相关意识和能力。`, `${d.nm}行为欠缺，影响团队整体绩效和协作效果。`]
+    }));
+    if (anchors.length === 0) anchors = MOCK_ANCHORS;
+  }
+  showContent();
+}
+
+function showContent() {
+  document.getElementById('loadingArea').classList.add('hidden');
+  document.getElementById('contentArea').classList.remove('hidden');
+  // Open first by default
+  if (anchors.length > 0 && Object.keys(openMap).length === 0) openMap[anchors[0].id] = true;
+  render();
+}
+
+function render() {
+  document.getElementById('ancAcc').innerHTML = anchors.map(a => {
+    const isOpen = openMap[a.id] || false;
+    return `<div class="anc-item">
+      <div class="anc-hd" onclick="toggle('${a.id}')">
+        <span class="anc-chev ${isOpen?'open':''}">▶</span>
+        <span class="anc-nm">${a.nm}</span>
+        <span class="badge bg-gy">${a.ex.length + a.st.length + a.bl.length} 条行为</span>
+      </div>
+      <div class="anc-bd ${isOpen?'open':''}">
+        <div class="anc-cols">
+          <div>
+            <div class="col-hd col-ex">⭐ 优秀水平</div>
+            ${a.ex.map((t,j) => `<div class="beh" contenteditable="true" onblur="saveBeh('${a.id}','ex',${j},this.textContent)">${t}</div>`).join('')}
+          </div>
+          <div>
+            <div class="col-hd col-st">✅ 达标水平</div>
+            ${a.st.map((t,j) => `<div class="beh" contenteditable="true" onblur="saveBeh('${a.id}','st',${j},this.textContent)">${t}</div>`).join('')}
+          </div>
+          <div>
+            <div class="col-hd col-bl">⚠️ 不达标</div>
+            ${a.bl.map((t,j) => `<div class="beh" contenteditable="true" onblur="saveBeh('${a.id}','bl',${j},this.textContent)">${t}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggle(id) { openMap[id] = !openMap[id]; render(); }
+function saveBeh(aid, lv, idx, t) {
+  const a = anchors.find(x => x.id === aid);
+  if (a && a[lv]) a[lv][idx] = t.trim();
+}
+
+function goNext() {
+  localStorage.setItem('lm_anchors', JSON.stringify(anchors));
+  window.location.href = 'step5.html';
+}
+
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>

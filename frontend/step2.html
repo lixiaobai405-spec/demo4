@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>维度确认 - 领导力建模智能体</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.dim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.dc { background: var(--sf); border-radius: 12px; border: 1.5px solid var(--br); box-shadow: var(--sh); overflow: hidden; transition: all .2s; }
+.dc:hover { box-shadow: var(--shh); }
+.dc.confirmed { border-color: var(--gr); }
+.dc-hd { padding: 14px 15px 9px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.dc-nm { font-size: 14.5px; font-weight: 600; color: var(--t1); }
+.dc-df { padding: 0 15px 11px; font-size: 13px; color: var(--t2); line-height: 1.6; }
+.dc-src { padding: 0 15px 11px; display: flex; flex-wrap: wrap; gap: 5px; }
+.src-tag { font-size: 10.5px; padding: 2px 8px; border-radius: 100px; }
+.dc-ft { padding: 9px 15px; border-top: 1px solid var(--br); display: flex; gap: 7px; background: var(--sf2); }
+.dc.confirmed .dc-ft { background: var(--grbg); }
+.alt-pool { margin-top: 22px; background: var(--sf); border-radius: 12px; border: 1px solid var(--br); padding: 16px 18px; box-shadow: var(--sh); }
+.alt-pool h4 { font-size: 13.5px; font-weight: 600; color: var(--t2); margin-bottom: 11px; display: flex; align-items: center; gap: 8px; }
+.alt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.alt-chip { padding: 6px 13px; border-radius: 100px; border: 1.5px dashed var(--brk); font-size: 13px; cursor: pointer; color: var(--t2); background: var(--sf); transition: all .15s; }
+.alt-chip:hover { border-color: var(--p); color: var(--p); background: var(--p10); }
+.gen-area { text-align: center; padding: 30px; }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog">
+    <a class="ps" href="step1.html"><div class="pd done">✓</div><span class="pl">信息采集</span></a><div class="pline done"></div>
+    <a class="ps" href="step2.html"><div class="pd active">2</div><span class="pl active">维度确认</span></a><div class="pline"></div>
+    <a class="ps" href="step3.html"><div class="pd pending">3</div><span class="pl">描述建立</span></a><div class="pline"></div>
+    <a class="ps" href="step4.html"><div class="pd pending">4</div><span class="pl">行为锚定</span></a><div class="pline"></div>
+    <a class="ps" href="step5.html"><div class="pd pending">5</div><span class="pl">总览导出</span></a>
+  </nav>
+</header>
+
+<div class="main">
+  <div class="lcard">
+    <b>维度生成与确认（M02）— 第一次人机交接</b>
+    <p>AI 已基于企业背景生成维度框架，请逐一确认、修改或删除。至少确认 3 个维度才能进入下一步。</p>
+  </div>
+
+  <div id="loadingArea" class="ldg">
+    <div style="font-size:32px;margin-bottom:8px">✨</div>
+    <div class="ldots"><span></span><span></span><span></span></div>
+    <div style="font-size:13.5px;margin-top:4px">AI 正在生成领导力维度…</div>
+  </div>
+
+  <div id="contentArea" class="hidden">
+    <div class="sec-row">
+      <div><div class="sec-t">领导力维度框架</div>
+      <div class="sec-s" id="okCount">已确认 <strong style="color:var(--gr)">0</strong> / 0 个 · 至少需要 3 个</div></div>
+      <button class="btn btn-o btn-sm" onclick="confirmAll()">全部确认</button>
+    </div>
+    <div class="dim-grid" id="dimGrid"></div>
+    <div class="alt-pool">
+      <h4>＋ 备选维度池 <span style="font-weight:400;font-size:12px;color:var(--t3)">点击添加</span></h4>
+      <div class="alt-chips" id="altChips"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="ftr">
+  <a href="step1.html" class="btn btn-o">← 上一步</a>
+  <span class="step-info">步骤 2 / 5</span>
+  <button class="btn btn-p" id="nextBtn" onclick="goNext()" disabled>确认维度，生成描述 →</button>
+</footer>
+
+<div class="modal-bg" id="editModal">
+  <div class="modal-box">
+    <div class="modal-hd"><span>编辑维度</span><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="ff"><label>维度名称</label><input id="editName" type="text"></div>
+    <div class="ff"><label>定义说明（2-3句话）</label><textarea id="editDef" rows="3"></textarea></div>
+    <div class="modal-ft"><button class="btn btn-o btn-sm" onclick="closeModal()">取消</button><button class="btn btn-p btn-sm" onclick="saveEdit()">保存</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '/api';
+const MOCK_DIMS = [
+  {id:'D1',nm:'战略引领',df:'理解并转化公司战略，将目标拆解为团队可执行的阶段工作计划，在组织变化中保持方向感与凝聚力。',pri:'core',ok:false},
+  {id:'D2',nm:'团队赋能',df:'识别成员能力差距，通过辅导、授权和持续反馈激发个体潜力，构建高效协作的学习型团队。',pri:'core',ok:false},
+  {id:'D3',nm:'跨部门协作',df:'主动建立跨团队合作关系，有效协调多方资源与利益诉求，推动跨部门重要项目有效落地。',pri:'core',ok:false},
+  {id:'D4',nm:'执行与交付',df:'将计划转化为具体行动，合理配置资源，持续追踪关键节点，确保目标按时按质完成承诺。',pri:'important',ok:false},
+  {id:'D5',nm:'沟通影响力',df:'根据不同对象调整表达策略，清晰传递信息，有效影响他人行动，建立可信赖的合作关系。',pri:'important',ok:false},
+];
+const MOCK_ALTS = [
+  {id:'D6',nm:'变革管理',df:'引领组织变革，帮助团队在不确定环境中保持积极心态。',pri:'supplementary',added:false},
+  {id:'D7',nm:'客户导向',df:'深刻理解客户需求，在决策中优先考虑客户视角。',pri:'supplementary',added:false},
+  {id:'D8',nm:'数据决策',df:'基于数据分析洞察业务趋势，做出科学合理的管理决策。',pri:'supplementary',added:false},
+];
+
+let dims = [];
+let alts = [...MOCK_ALTS];
+let editId = null;
+
+// Load from localStorage or generate
+const saved = localStorage.getItem('lm_dims');
+if (saved) {
+  try { dims = JSON.parse(saved); } catch(e) {}
+}
+
+async function init() {
+  if (dims.length > 0) {
+    showContent();
+    return;
+  }
+
+  // Try to generate via AI
+  const companyInfo = localStorage.getItem('lm_company_info');
+  if (!companyInfo) {
+    // Fallback to mock
+    dims = MOCK_DIMS.map(d => ({...d, ok: false}));
+    showContent();
+    return;
+  }
+
+  try {
+    const level = JSON.parse(companyInfo)['建模层级'] || '中层管理者';
+    const resp = await fetch(`${API}/generate-dimensions`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ company_info: companyInfo, level })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    // Parse JSON from AI response
+    const jsonStr = data.result.replace(/```json\n?|```/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    dims = (parsed.dimensions || []).map(d => ({
+      id: d.id,
+      nm: d.name,
+      df: d.definition,
+      pri: d.priority || 'important',
+      ok: false
+    }));
+    if (dims.length === 0) dims = MOCK_DIMS.map(d => ({...d, ok: false}));
+  } catch (err) {
+    console.error('AI generation failed, using mock:', err);
+    dims = MOCK_DIMS.map(d => ({...d, ok: false}));
+  }
+  showContent();
+}
+
+function showContent() {
+  document.getElementById('loadingArea').classList.add('hidden');
+  document.getElementById('contentArea').classList.remove('hidden');
+  render();
+}
+
+function render() {
+  const pc = {core:'bg-gr', important:'bg-a', supplementary:'bg-gy'};
+  const pl = {core:'核心', important:'重要', supplementary:'补充'};
+
+  document.getElementById('dimGrid').innerHTML = dims.map(d => {
+    return `<div class="dc ${d.ok?'confirmed':''}">
+      <div class="dc-hd"><div class="dc-nm">${d.nm}</div><span class="badge ${pc[d.pri]||'bg-gy'}">${pl[d.pri]||'补充'}</span></div>
+      <div class="dc-df">${d.df}</div>
+      <div class="dc-ft">
+        <button class="btn btn-sm ${d.ok?'btn-o':'btn-p'}" style="${d.ok?'background:var(--gr);color:#fff;border-color:var(--gr)':''}" onclick="toggleOk('${d.id}')">${d.ok?'✓ 已确认':'确认'}</button>
+        <button class="btn btn-g btn-sm" onclick="openEdit('${d.id}')">编辑</button>
+        <button class="btn btn-d btn-sm" onclick="delDim('${d.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('altChips').innerHTML = alts.filter(a => !a.added).map(a =>
+    `<div class="alt-chip" onclick="addAlt('${a.id}')" title="${a.df}">+ ${a.nm}</div>`
+  ).join('');
+
+  const ok = dims.filter(d => d.ok).length;
+  document.getElementById('okCount').innerHTML = `已确认 <strong style="color:var(--gr)">${ok}</strong> / ${dims.length} 个${ok>=3?' · ✓ 可进入下一步':' · 还需 '+(3-ok)+' 个'}`;
+  document.getElementById('nextBtn').disabled = ok < 3;
+}
+
+function toggleOk(id) { const d = dims.find(x => x.id === id); if (d) { d.ok = !d.ok; } render(); }
+function delDim(id) { dims = dims.filter(x => x.id !== id); render(); }
+function confirmAll() { dims.forEach(d => d.ok = true); render(); }
+function addAlt(id) {
+  const a = alts.find(x => x.id === id);
+  if (a) { a.added = true; dims.push({...a, ok: true}); }
+  render();
+}
+function openEdit(id) {
+  const d = dims.find(x => x.id === id); if (!d) return;
+  editId = id;
+  document.getElementById('editName').value = d.nm;
+  document.getElementById('editDef').value = d.df;
+  document.getElementById('editModal').classList.add('show');
+}
+function closeModal() { document.getElementById('editModal').classList.remove('show'); editId = null; }
+function saveEdit() {
+  const d = dims.find(x => x.id === editId);
+  if (d) { d.nm = document.getElementById('editName').value; d.df = document.getElementById('editDef').value; }
+  closeModal(); render();
+}
+function goNext() {
+  const confirmed = dims.filter(d => d.ok);
+  localStorage.setItem('lm_dims', JSON.stringify(confirmed));
+  window.location.href = 'step3.html';
+}
+
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>

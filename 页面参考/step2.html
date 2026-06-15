@@ -1,0 +1,161 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>维度确认 - 领导力建模</title>
+<style>
+:root{--p:#6C216D;--p10:#F4ECF4;--p20:#E8D4E8;--p40:#BF88C0;--p60:#9A52A0;--p80:#7D3D7E;--pdk:#4A1550;
+--a:#E18C3F;--a10:#FEF4E8;--a20:#FADCC0;--a60:#C97028;--adk:#A05510;
+--bg:#F7F4F8;--sf:#FFF;--sf2:#FAF7FB;--br:#EAE0EC;--brk:#D0C0D3;
+--t1:#1A1520;--t2:#5C506A;--t3:#9585A0;
+--gr:#0F6E56;--grbg:#E1F5EE;--am:#7A4A08;--ambg:#FEF3C7;--rd:#991B1B;--rdbg:#FEE2E2;
+--sh:0 2px 8px rgba(108,33,109,.08),0 1px 3px rgba(0,0,0,.04);--shh:0 8px 24px rgba(108,33,109,.14)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',Arial,sans-serif;background:var(--bg);color:var(--t1);line-height:1.6;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--brk);border-radius:5px}
+.hdr{background:var(--p);padding:0 36px;height:54px;display:flex;align-items:center;gap:20px;flex-shrink:0}
+.logo{font-size:14.5px;font-weight:600;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--a)}
+.prog{display:flex;align-items:center;flex:1;gap:0}
+.ps{display:flex;align-items:center;gap:5px;text-decoration:none}
+.pd{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:all .2s}
+.pd.dn{background:rgba(255,255,255,.28);color:#fff}
+.pd.ac{background:var(--a);color:#fff;box-shadow:0 0 0 3px rgba(225,140,63,.3)}
+.pd.nd{background:rgba(255,255,255,.12);color:rgba(255,255,255,.35)}
+.pl{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap}.pl.ac{color:#fff;font-weight:500}
+.pln{flex:1;height:1px;background:rgba(255,255,255,.2);min-width:14px}.pln.dn{background:rgba(255,255,255,.4)}
+.ftr{background:var(--sf);border-top:1px solid var(--br);padding:13px 36px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:sticky;bottom:0;z-index:50}
+.step-info{font-size:12.5px;color:var(--t3);font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:8px;font-size:13.5px;font-weight:500;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:inherit;text-decoration:none;line-height:1.3;white-space:nowrap}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.btn-p{background:var(--p);color:#fff;border-color:var(--p)}.btn-p:hover{background:var(--p80)}
+.btn-a{background:var(--a);color:#fff;border-color:var(--a)}.btn-a:hover{background:var(--a60)}
+.btn-o{background:var(--sf);color:var(--t1);border-color:var(--br)}.btn-o:hover{background:var(--bg)}
+.btn-g{background:transparent;color:var(--t2);border-color:transparent;padding:5px 10px}.btn-g:hover{background:var(--bg)}
+.btn-d{background:transparent;color:var(--rd);border-color:transparent;padding:5px 10px}.btn-d:hover{background:var(--rdbg)}
+.btn-sm{padding:5px 12px;font-size:12.5px}
+.btn-lg{padding:13px 32px;font-size:15px}
+.lcard{background:var(--p10);border:1.5px solid var(--p20);border-left:3px solid var(--p);border-radius:0 8px 8px 0;padding:11px 15px;margin-bottom:16px;font-size:13px}
+.lcard b{color:var(--p80);display:block;margin-bottom:2px;font-size:13px;font-weight:600}
+.lcard p{color:var(--t2);line-height:1.55}
+.sec-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+.sec-t{font-size:16px;font-weight:600;color:var(--t1)}
+.sec-s{font-size:12.5px;color:var(--t2);margin-top:3px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:500}
+.bg-gr{background:var(--grbg);color:var(--gr)}.bg-am{background:var(--ambg);color:var(--am)}
+.bg-rd{background:var(--rdbg);color:var(--rd)}.bg-p{background:var(--p10);color:var(--p80)}
+.bg-a{background:var(--a10);color:var(--adk)}.bg-gy{background:#F0EDF5;color:#6A5F7A}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--sf);border-radius:16px;padding:24px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.m-hd{font-size:16px;font-weight:600;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;color:var(--t1)}
+.mx{background:none;border:none;font-size:22px;cursor:pointer;color:var(--t3);line-height:1}
+.ff{margin-bottom:13px}.ff label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.ff input,.ff textarea{width:100%;border:1.5px solid var(--br);border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;outline:none;color:var(--t1);transition:border-color .15s}
+.ff input:focus,.ff textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.ff textarea{resize:vertical;min-height:80px;line-height:1.6}
+.mft{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.main{flex:1;padding:22px 36px;max-width:1100px;margin:0 auto;width:100%}
+.card{background:var(--sf);border-radius:12px;border:1px solid var(--br);box-shadow:var(--sh)}
+</style>
+<style>
+.dim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.dc{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);box-shadow:var(--sh);overflow:hidden;transition:all .2s}
+.dc:hover{box-shadow:var(--shh)}
+.dc.confirmed{border-color:var(--gr);}
+.dc-hd{padding:14px 15px 9px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.dc-nm{font-size:14.5px;font-weight:600;color:var(--t1)}
+.dc-df{padding:0 15px 11px;font-size:13px;color:var(--t2);line-height:1.6}
+.dc-src{padding:0 15px 11px;display:flex;flex-wrap:wrap;gap:5px}
+.src-tag{font-size:10.5px;padding:2px 8px;border-radius:100px}
+.dc-ft{padding:9px 15px;border-top:1px solid var(--br);display:flex;gap:7px;background:var(--sf2)}
+.dc.confirmed .dc-ft{background:var(--grbg)}
+.alt-pool{margin-top:22px;background:var(--sf);border-radius:12px;border:1px solid var(--br);padding:16px 18px;box-shadow:var(--sh)}
+.alt-pool h4{font-size:13.5px;font-weight:600;color:var(--t2);margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.alt-chips{display:flex;flex-wrap:wrap;gap:8px}
+.alt-chip{padding:6px 13px;border-radius:100px;border:1.5px dashed var(--brk);font-size:13px;cursor:pointer;color:var(--t2);background:var(--sf);transition:all .15s}
+.alt-chip:hover{border-color:var(--p);color:var(--p);background:var(--p10)}
+</style>
+</head><body>
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog"><a class="ps" href="step1.html"><div class="pd dn">✓</div><span class="pl ">信息采集</span></a><div class="pln dn"></div><a class="ps" href="step2.html"><div class="pd ac">2</div><span class="pl ac">维度确认</span></a><div class="pln "></div><a class="ps" href="step3.html"><div class="pd nd">3</div><span class="pl ">描述建立</span></a><div class="pln "></div><a class="ps" href="step4.html"><div class="pd nd">4</div><span class="pl ">行为锚定</span></a><div class="pln "></div><a class="ps" href="step5.html"><div class="pd nd">5</div><span class="pl ">总览导出</span></a></nav>
+</header>
+<div class="main">
+  <div class="lcard"><b>维度生成与确认（M02）— 第一次人机交接</b><p>AI 已基于企业背景生成维度框架，请逐一确认、修改或删除。至少确认 3 个维度才能进入下一步。</p></div>
+  <div class="sec-row">
+    <div><div class="sec-t">领导力维度框架</div><div class="sec-s" id="okCount">已确认 <strong style="color:var(--gr)">0</strong> / 5 个 · 至少需要 3 个</div></div>
+    <button class="btn btn-o btn-sm" onclick="confirmAll()">全部确认</button>
+  </div>
+  <div class="dim-grid" id="dimGrid"></div>
+  <div class="alt-pool">
+    <h4>＋ 备选维度池 <span style="font-weight:400;font-size:12px;color:var(--t3)">点击添加</span></h4>
+    <div class="alt-chips" id="altChips"></div>
+  </div>
+</div>
+<footer class="ftr">
+  <a href="step1.html" class="btn btn-o">← 上一步</a>
+  <span class="step-info">步骤 2 / 5</span>
+  <button class="btn btn-p" id="nextBtn" onclick="goNext()" disabled>确认维度，生成描述 →</button>
+</footer>
+
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="m-hd"><span>编辑维度</span><button class="mx" onclick="closeModal()">×</button></div>
+    <div class="ff"><label>维度名称</label><input id="editName" type="text"></div>
+    <div class="ff"><label>定义说明（2-3句话）</label><textarea id="editDef" rows="3"></textarea></div>
+    <div class="mft"><button class="btn btn-o btn-sm" onclick="closeModal()">取消</button><button class="btn btn-p btn-sm" onclick="saveEdit()">保存</button></div>
+  </div>
+</div>
+
+<script>
+let dims=[
+  {id:"D1",nm:"战略引领",df:"理解并转化公司战略，将目标拆解为团队可执行的阶段工作计划，在组织变化中保持方向感与凝聚力。",pri:"core",ok:false,src:{s:"战略重点承接",f:"美世 Strategic Orientation",i:"「让团队知道方向」"}},
+  {id:"D2",nm:"团队赋能",df:"识别成员能力差距，通过辅导、授权和持续反馈激发个体潜力，构建高效协作的学习型团队。",pri:"core",ok:false,src:{s:"人才梯队建设",f:"DDI Coaching for Success",i:"「能培养出好下属」"}},
+  {id:"D3",nm:"跨部门协作",df:"主动建立跨团队合作关系，有效协调多方资源与利益诉求，推动跨部门重要项目有效落地。",pri:"core",ok:false,src:{s:"协作效率提升",f:"富兰克林柯维协同增效",i:"「最怕各自为政」"}},
+  {id:"D4",nm:"执行与交付",df:"将计划转化为具体行动，合理配置资源，持续追踪关键节点，确保目标按时按质完成承诺。",pri:"important",ok:false,src:{s:"执行力提升",f:"美世 Execution Focus",i:null}},
+  {id:"D5",nm:"沟通影响力",df:"根据不同对象调整表达策略，清晰传递信息，有效影响他人行动，建立可信赖的合作关系。",pri:"important",ok:false,src:{s:null,f:"DDI Interaction Management",i:"「有感召力」"}},
+];
+let alts=[
+  {id:"D6",nm:"变革管理",df:"引领组织变革，帮助团队在不确定环境中保持积极心态。",pri:"supplementary",added:false},
+  {id:"D7",nm:"客户导向",df:"深刻理解客户需求，在决策中优先考虑客户视角。",pri:"supplementary",added:false},
+  {id:"D8",nm:"数据决策",df:"基于数据分析洞察业务趋势，做出科学合理的管理决策。",pri:"supplementary",added:false},
+];
+let editId=null;
+
+function render(){
+  const pc={core:"bg-gr",important:"bg-a",supplementary:"bg-gy"};
+  const pl={core:"核心",important:"重要",supplementary:"补充"};
+  document.getElementById("dimGrid").innerHTML=dims.map(d=>{
+    const srcs=[];
+    if(d.src.s) srcs.push(`<span class="src-tag" style="background:var(--grbg);color:var(--gr)">${d.src.s}</span>`);
+    if(d.src.f) srcs.push(`<span class="src-tag" style="background:var(--p10);color:var(--p80)">${d.src.f}</span>`);
+    if(d.src.i) srcs.push(`<span class="src-tag" style="background:var(--a10);color:var(--adk)">${d.src.i}</span>`);
+    return `<div class="dc ${d.ok?"confirmed":""}" id="dc_${d.id}">
+      <div class="dc-hd"><div class="dc-nm">${d.nm}</div><span class="badge ${pc[d.pri]}">${pl[d.pri]}</span></div>
+      <div class="dc-df">${d.df}</div>
+      ${srcs.length?`<div class="dc-src">${srcs.join("")}</div>`:""}
+      <div class="dc-ft">
+        <button class="btn btn-sm ${d.ok?"btn-o":"btn-p"}" style="${d.ok?"background:var(--gr);color:#fff;border-color:var(--gr)":""}" onclick="toggleOk('${d.id}')">${d.ok?"✓ 已确认":"确认"}</button>
+        <button class="btn btn-g btn-sm" onclick="openEdit('${d.id}')">编辑</button>
+        <button class="btn btn-d btn-sm" onclick="delDim('${d.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("altChips").innerHTML=alts.filter(a=>!a.added).map(a=>`<div class="alt-chip" onclick="addAlt('${a.id}')" title="${a.df}">+ ${a.nm}</div>`).join("");
+
+  const ok=dims.filter(d=>d.ok).length;
+  const total=dims.length;
+  document.getElementById("okCount").innerHTML=`已确认 <strong style="color:var(--gr)">${ok}</strong> / ${total} 个${ok>=3?" · ✓ 可进入下一步":" · 还需 "+(3-ok)+" 个"}`;
+  document.getElementById("nextBtn").disabled = ok < 3;
+  localStorage.setItem("lm_dims",JSON.stringify(dims.filter(d=>d.ok)));
+}
+
+function toggleOk(id){const d=dims.find(x=>x.id===id);if(d){d.ok=!d.ok;render();}}
+function delDim(id){dims=dims.filter(x=>x.id!==id);render();}
+function confirmAll(){dims.forEach(d=>d.ok=true);render();}
+function addAlt(id){const a=alts.find(x=>x.id===id);if(a){a.added=true;dims.push({...a,ok:false});render();}}
+function openEdit(id){const d=dims.find(x=>x.id===id);if(!d)return;editId=id;document.getElementById("editName").value=d.nm;document.getElementById("editDef").value=d.df;document.getElementById("editModal").classList.add("show");}
+function closeModal(){document.getElementById("editModal").classList.remove("show");editId=null;}
+function saveEdit(){const d=dims.find(x=>x.id===editId);if(d){d.nm=document.getElementById("editName").value;d.df=document.getElementById("editDef").value;}closeModal();render();}
+function goNext(){localStorage.setItem("lm_dims",JSON.stringify(dims.filter(d=>d.ok)));window.location.href="step3.html";}
+render();
+</script>
+</body></html>

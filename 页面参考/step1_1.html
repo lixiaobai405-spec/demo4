@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>信息采集 - 领导力建模智能体</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{--p:#6C216D;--p10:#F4ECF4;--p20:#E8D4E8;--p40:#BF88C0;--p60:#9A52A0;--p80:#7D3D7E;--pdk:#4A1550;
+--a:#E18C3F;--a10:#FEF4E8;--a20:#FADCC0;--a60:#C97028;--adk:#A05510;
+--bg:#F7F4F8;--sf:#FFF;--sf2:#FAF7FB;--br:#EAE0EC;--brk:#D0C0D3;
+--t1:#1A1520;--t2:#5C506A;--t3:#9585A0;
+--gr:#0F6E56;--grbg:#E1F5EE;--am:#7A4A08;--ambg:#FEF3C7;--rd:#991B1B;--rdbg:#FEE2E2;
+--sh:0 2px 8px rgba(108,33,109,.08),0 1px 3px rgba(0,0,0,.04);--shh:0 8px 24px rgba(108,33,109,.14)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',Arial,sans-serif;background:var(--bg);color:var(--t1);line-height:1.6;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--brk);border-radius:5px}
+.hdr{background:var(--p);padding:0 32px;height:54px;display:flex;align-items:center;gap:20px;flex-shrink:0}
+.logo{font-size:14.5px;font-weight:600;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--a)}
+.prog{display:flex;align-items:center;flex:1;gap:0}
+.ps{display:flex;align-items:center;gap:5px;text-decoration:none}
+.pd{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.pd.dn{background:rgba(255,255,255,.28);color:#fff}
+.pd.ac{background:var(--a);color:#fff;box-shadow:0 0 0 3px rgba(225,140,63,.3)}
+.pd.nd{background:rgba(255,255,255,.12);color:rgba(255,255,255,.35)}
+.pl{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap}.pl.ac{color:#fff;font-weight:500}
+.pln{flex:1;height:1px;background:rgba(255,255,255,.2);min-width:14px}.pln.dn{background:rgba(255,255,255,.4)}
+.ftr{background:var(--sf);border-top:1px solid var(--br);padding:12px 32px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;position:sticky;bottom:0;z-index:50}
+.step-info{font-size:12.5px;color:var(--t3);font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:8px;font-size:13.5px;font-weight:500;border:1.5px solid transparent;cursor:pointer;transition:all .15s;font-family:inherit;text-decoration:none;line-height:1.3;white-space:nowrap}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.btn-p{background:var(--p);color:#fff}.btn-p:hover{background:var(--p80)}
+.btn-o{background:var(--sf);color:var(--t1);border-color:var(--br)}.btn-o:hover{background:var(--bg)}
+.btn-sm{padding:5px 12px;font-size:12.5px}
+.lcard{background:var(--p10);border:1.5px solid var(--p20);border-left:3px solid var(--p);border-radius:0 8px 8px 0;padding:11px 15px;margin-bottom:14px;font-size:13px}
+.lcard b{color:var(--p80);display:block;margin-bottom:2px;font-size:13px;font-weight:600}
+.lcard p{color:var(--t2);line-height:1.55}
+.main{flex:1;padding:16px 32px;max-width:1200px;margin:0 auto;width:100%;display:flex;flex-direction:column}
+
+/* ─── 三栏布局 ─── */
+.step1-grid{display:grid;grid-template-columns:1fr 300px;gap:14px;flex:1;min-height:0}
+
+/* ─── 聊天区 ─── */
+.chat-pane{display:flex;flex-direction:column;background:var(--sf);border-radius:14px;border:1px solid var(--br);box-shadow:var(--sh);overflow:hidden;min-height:0}
+.chat-title{padding:11px 15px;border-bottom:1px solid var(--br);display:flex;align-items:center;gap:8px;background:var(--sf2);flex-shrink:0}
+.chat-title span{font-size:13px;font-weight:600;color:var(--t1)}
+.chat-title-sub{font-size:12px;color:var(--t3);margin-left:auto}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:11px;min-height:0}
+.msg{display:flex;gap:8px;max-width:90%}
+.msg.ai{align-self:flex-start}.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.av{width:28px;height:28px;border-radius:50%;background:var(--p10);border:1.5px solid var(--p20);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;color:var(--p)}
+.bub{padding:10px 13px;border-radius:11px;font-size:13.5px;line-height:1.65}
+.msg.ai .bub{background:var(--bg);border:1px solid var(--br);border-radius:3px 11px 11px 11px;color:var(--t1)}
+.msg.user .bub{background:var(--p);color:#fff;border-radius:11px 3px 11px 11px}
+.msg.file-msg .bub{background:var(--a10);border:1px solid var(--a20);border-radius:3px 11px 11px 11px;color:var(--adk)}
+.typing{padding:10px 13px;background:var(--bg);border:1px solid var(--br);border-radius:3px 11px 11px 11px;display:flex;gap:5px;align-items:center}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--p40);animation:tp 1.2s ease-in-out infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes tp{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-4px);opacity:1}}
+.chat-foot{border-top:1px solid var(--br);padding:10px 12px;display:flex;gap:8px;background:var(--sf2);flex-shrink:0}
+.ci{flex:1;border:1.5px solid var(--br);border-radius:8px;padding:8px 11px;font-size:13.5px;font-family:inherit;outline:none;resize:none;max-height:80px;line-height:1.5;color:var(--t1);background:var(--sf);transition:border-color .15s}
+.ci:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}
+.csend{background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13.5px;font-weight:500;white-space:nowrap;transition:background .15s}
+.csend:hover{background:var(--p80)}
+
+/* ─── 右侧面板 ─── */
+.right-panel{display:flex;flex-direction:column;gap:12px;overflow-y:auto;min-height:0}
+
+/* 摘要卡 */
+.sum-card{background:var(--sf);border-radius:12px;border:1px solid var(--br);box-shadow:var(--sh);overflow:hidden;flex-shrink:0}
+.sum-hd{background:var(--p10);padding:10px 13px;font-size:12.5px;font-weight:600;color:var(--p80);border-bottom:1px solid var(--p20);display:flex;align-items:center;gap:7px}
+.sum-bd{padding:12px 13px}
+.sf3{margin-bottom:8px}.sf3:last-child{margin-bottom:0}
+.sf3-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:2px;font-weight:500}
+.sf3-val{font-size:12.5px;color:var(--t1)}
+.confirm-box{background:var(--grbg);border:1px solid #86EFAC;border-radius:9px;padding:10px 13px;font-size:12.5px;color:var(--gr);font-weight:500;display:flex;align-items:center;gap:7px}
+
+/* ─── 文件上传区 ─── */
+.upload-card{background:var(--sf);border-radius:12px;border:1px solid var(--br);box-shadow:var(--sh);overflow:hidden}
+.upload-hd{background:var(--a10);padding:10px 13px;font-size:12.5px;font-weight:600;color:var(--adk);border-bottom:1px solid var(--a20);display:flex;align-items:center;gap:7px}
+.upload-hd span{font-size:11px;color:var(--a60);font-weight:400;margin-left:auto}
+.drop-zone{border:2px dashed var(--brk);border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .2s;margin:11px;background:var(--bg);position:relative}
+.drop-zone.drag-over,.drop-zone:hover{border-color:var(--a);background:var(--a10)}
+.drop-icon{font-size:26px;margin-bottom:7px;color:var(--t3)}
+.drop-zone p{font-size:12.5px;color:var(--t2);margin-bottom:4px;line-height:1.5}
+.drop-zone p b{color:var(--a);cursor:pointer}
+.drop-zone .drop-sub{font-size:11px;color:var(--t3)}
+.file-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.file-list{display:flex;flex-direction:column;gap:0}
+.file-item{padding:10px 13px;border-top:1px solid var(--br);display:flex;align-items:flex-start;gap:9px}
+.file-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:12.5px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-size:11px;color:var(--t3);margin-top:1px}
+.file-status{font-size:11px;padding:2px 8px;border-radius:100px;font-weight:500;flex-shrink:0;margin-top:2px}
+.fs-pending{background:#F1EDF5;color:var(--p60)}
+.fs-loading{background:var(--ambg);color:var(--am)}
+.fs-done{background:var(--grbg);color:var(--gr)}
+.fs-error{background:var(--rdbg);color:var(--rd)}
+.file-actions{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.file-actions button{font-size:11.5px;padding:3px 9px;border-radius:6px;border:1px solid var(--br);background:var(--sf);color:var(--t2);cursor:pointer;transition:all .15s}
+.file-actions button:hover{border-color:var(--a);color:var(--a);background:var(--a10)}
+.analysis-result{background:var(--sf2);border-top:1px solid var(--br);padding:10px 13px;font-size:12px;color:var(--t2);line-height:1.65;display:none}
+.analysis-result.show{display:block}
+.analysis-result .kw-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.kw{background:var(--p10);color:var(--p80);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500}
+.kw-a{background:var(--a10);color:var(--adk)}
+.kw-g{background:var(--grbg);color:var(--gr)}
+.analysis-raw{margin-top:8px;font-size:12px;color:var(--t2);line-height:1.7;border-top:1px dashed var(--brk);padding-top:8px}
+.progress-bar{height:3px;background:var(--a20);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;background:var(--a);border-radius:3px;transition:width .3s;width:0%}
+.doc-inject-notice{background:var(--a10);border:1px solid var(--a20);border-radius:8px;padding:9px 12px;font-size:12.5px;color:var(--adk);display:flex;align-items:flex-start;gap:7px;margin:0 11px 11px}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog">
+    <a class="ps" href="step1.html"><div class="pd ac">1</div><span class="pl ac">信息采集</span></a>
+    <div class="pln"></div>
+    <a class="ps" href="step2.html"><div class="pd nd">2</div><span class="pl">维度确认</span></a>
+    <div class="pln"></div>
+    <a class="ps" href="step3.html"><div class="pd nd">3</div><span class="pl">描述建立</span></a>
+    <div class="pln"></div>
+    <a class="ps" href="step4.html"><div class="pd nd">4</div><span class="pl">行为锚定</span></a>
+    <div class="pln"></div>
+    <a class="ps" href="step5.html"><div class="pd nd">5</div><span class="pl">总览导出</span></a>
+  </nav>
+</header>
+
+<!-- ── Main ── -->
+<div class="main">
+  <div class="lcard">
+    <b>信息采集阶段（M01）</b>
+    <p>通过对话收集企业背景，同时支持上传战略文档、JD、绩效报告等附件，AI 自动解析关键信息并融入建模上下文，完成后生成摘要进入下一步。</p>
+  </div>
+
+  <div class="step1-grid">
+    <!-- 左：对话区 -->
+    <div class="chat-pane">
+      <div class="chat-title">
+        <span>🤖 AI 引导对话</span>
+        <span class="chat-title-sub" id="chatProgress">第 0 / 6 步</span>
+      </div>
+      <div class="chat-msgs" id="cmsgs"></div>
+      <div class="chat-foot">
+        <textarea class="ci" id="ci" placeholder="输入您的回答，按 Enter 发送…" rows="2" onkeydown="ckd(event)"></textarea>
+        <button class="csend" onclick="send()">发送 ↑</button>
+      </div>
+    </div>
+
+    <!-- 右：摘要 + 上传 -->
+    <div class="right-panel" id="rightPanel">
+      <!-- 摘要卡 -->
+      <div class="sum-card">
+        <div class="sum-hd">📋 建模信息进度</div>
+        <div class="sum-bd" id="sbd">
+          <div style="font-size:12px;color:var(--t3);text-align:center;padding:16px 0;line-height:1.7">
+            通过左侧对话<br>采集信息后<br>摘要自动出现
+          </div>
+        </div>
+      </div>
+
+      <!-- 文件上传卡 -->
+      <div class="upload-card" id="uploadCard">
+        <div class="upload-hd">
+          📎 上传参考文档
+          <span>PDF · Word · TXT</span>
+        </div>
+
+        <div class="drop-zone" id="dropZone"
+          ondragover="ev(event,'over')" ondragleave="ev(event,'leave')" ondrop="ev(event,'drop')">
+          <input class="file-input" type="file" id="fileInput" accept=".txt,.pdf,.docx,.doc,.md"
+            multiple onchange="handleSelect(this.files)">
+          <div class="drop-icon">📄</div>
+          <p>拖拽文件至此处，或 <b>点击选择文件</b></p>
+          <div class="drop-sub">支持战略文档、JD、绩效报告（最大 10MB）</div>
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer class="ftr">
+  <a href="index.html" class="btn btn-o">← 返回首页</a>
+  <span class="step-info">步骤 1 / 5</span>
+  <button class="btn btn-p" id="nextBtn" onclick="goNext()" disabled>确认摘要，进入维度生成 →</button>
+</footer>
+
+<script>
+/* ════════════════════════════════════════
+   CHAT — 引导式对话
+════════════════════════════════════════ */
+const Q = [
+  "欢迎使用领导力建模智能体！🎉<br><br>我将通过几轮对话帮您梳理建模所需的企业信息，您也可以在右侧上传文档辅助建模。<br><br><strong>请问贵公司主要做什么业务？所在行业是哪个？</strong>",
+  "了解了！<strong>请问贵公司目前有多少员工？处于什么发展阶段？</strong>（如：快速扩张期 / 稳定经营期 / 转型调整期）",
+  "明白了。<strong>贵公司今年最主要的战略重点是什么？</strong>（如：开拓新市场、数字化转型、提升运营效率……）",
+  "好的。<strong>在管理层面，目前让您最头疼的问题是什么？</strong>（如：执行力参差、跨部门协作摩擦大……）",
+  "感谢！本次建模聚焦哪个管理层级？<br><br>A. 基层管理者（团队长/小组长）<br><strong>B. 中层管理者</strong>（部门经理/业务线负责人）<br>C. 高层管理者（VP/总经理）<br>D. 自定义",
+  "好的，本次针对 <strong>中层管理者</strong> 建模。<br><strong>在这个层级中，优秀管理者有哪些让您印象深刻的具体行为表现？</strong>（越具体越好，比如他/她怎么开会、如何带团队……）",
+];
+const SUMMARY = {
+  "行业/业务": "科技行业，SaaS 软件 to B 服务",
+  "规模/阶段": "500-1000 人，快速扩张期",
+  "战略重点": "新客户拓展；产品交付效率提升",
+  "管理痛点": "中层执行力参差；跨部门协作摩擦",
+  "建模层级": "中层管理者（部门经理/业务线负责人）",
+  "优秀画像": "主动跨部门协调、目标拆解清晰、能培养下属"
+};
+
+let chatIdx = 0, busy = false;
+let docContext = []; // 文档解析结果
+
+function addMsg(role, html) {
+  const el = document.createElement("div");
+  el.className = "msg " + role;
+  if (role === "ai") {
+    el.innerHTML = `<div class="av">🤖</div><div class="bub">${html}</div>`;
+  } else if (role === "file-msg") {
+    el.innerHTML = `<div class="av" style="background:var(--a10);border-color:var(--a20);color:var(--adk)">📄</div><div class="bub">${html}</div>`;
+  } else {
+    el.innerHTML = `<div class="bub">${html}</div>`;
+  }
+  const msgs = document.getElementById("cmsgs");
+  msgs.appendChild(el);
+  msgs.scrollTop = 99999;
+}
+
+function ckd(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }
+
+function send() {
+  if (busy) return;
+  const ci = document.getElementById("ci");
+  const t = ci.value.trim(); if (!t) return;
+  ci.value = ""; addMsg("user", t);
+  chatIdx++;
+  document.getElementById("chatProgress").textContent = `第 ${Math.min(chatIdx,6)} / 6 步`;
+  if (chatIdx > 6) return;
+  busy = true;
+  const ti = document.createElement("div");
+  ti.className = "msg ai"; ti.id = "typing";
+  ti.innerHTML = `<div class="av">🤖</div><div class="typing"><span></span><span></span><span></span></div>`;
+  document.getElementById("cmsgs").appendChild(ti);
+  document.getElementById("cmsgs").scrollTop = 99999;
+  setTimeout(() => {
+    document.getElementById("typing")?.remove();
+    if (chatIdx === 6) showSummary();
+    else if (chatIdx <= 6) addMsg("ai", Q[chatIdx]);
+    busy = false;
+  }, 600 + Math.random() * 400);
+}
+
+function showSummary() {
+  const docNote = docContext.length > 0
+    ? `<br><br>✅ 已融合 <strong>${docContext.length} 份文档</strong>的解析结果。`
+    : "";
+  addMsg("ai", "我已整理好建模背景摘要，请确认是否准确：<br><br>" +
+    Object.entries(SUMMARY).map(([k, v]) => `<strong>${k}</strong>：${v}`).join("<br>") + docNote);
+
+  const bd = document.getElementById("sbd");
+  bd.innerHTML = Object.entries(SUMMARY).map(([k, v]) =>
+    `<div class="sf3"><div class="sf3-lbl">${k}</div><div class="sf3-val">${v}</div></div>`
+  ).join("");
+
+  if (docContext.length > 0) {
+    const docDiv = document.createElement("div");
+    docDiv.innerHTML = `<div class="sf3" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--br)">
+      <div class="sf3-lbl" style="color:var(--adk)">📎 文档解析融入</div>
+      <div class="sf3-val" style="font-size:11.5px;color:var(--t2)">${docContext.join("；")}</div>
+    </div>`;
+    bd.appendChild(docDiv.firstElementChild);
+  }
+
+  const sp = document.getElementById("rightPanel");
+  const cb = document.createElement("div");
+  cb.className = "confirm-box"; cb.style.margin = "0 0 4px 0";
+  cb.innerHTML = "✅ 摘要已确认，点击右下角进入下一步";
+  sp.insertBefore(cb, sp.firstChild);
+
+  document.getElementById("nextBtn").disabled = false;
+  localStorage.setItem("lm_summary", JSON.stringify(SUMMARY));
+}
+
+function goNext() { window.location.href = "step2.html"; }
+
+setTimeout(() => addMsg("ai", Q[0]), 350);
+
+
+/* ════════════════════════════════════════
+   FILE UPLOAD — 文档上传与 AI 解析
+════════════════════════════════════════ */
+let fileRecords = [];
+
+function ev(e, type) {
+  e.preventDefault(); e.stopPropagation();
+  const dz = document.getElementById("dropZone");
+  if (type === "over") dz.classList.add("drag-over");
+  else if (type === "leave") dz.classList.remove("drag-over");
+  else if (type === "drop") {
+    dz.classList.remove("drag-over");
+    handleFiles(e.dataTransfer.files);
+  }
+}
+
+function handleSelect(files) { handleFiles(files); }
+
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    if (f.size > 10 * 1024 * 1024) {
+      alert(`文件 ${f.name} 超过 10MB 限制，已跳过。`); return;
+    }
+    const id = "f" + Date.now() + Math.random().toString(36).slice(2);
+    const rec = { id, file: f, status: "pending", result: null };
+    fileRecords.push(rec);
+    renderFileItem(rec);
+  });
+}
+
+function fileIcon(name) {
+  if (/\.pdf$/i.test(name)) return "📕";
+  if (/\.docx?$/i.test(name)) return "📘";
+  if (/\.txt|\.md$/i.test(name)) return "📄";
+  return "📎";
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + " B";
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
+  return (b / 1024 / 1024).toFixed(1) + " MB";
+}
+
+function renderFileItem(rec) {
+  const f = rec.file;
+  const existing = document.getElementById("fi_" + rec.id);
+  if (existing) { existing.outerHTML = buildFileItemHtml(rec); return; }
+  const li = document.createElement("div");
+  li.id = "fi_" + rec.id;
+  li.innerHTML = buildFileItemHtml(rec);
+  // Need to replace innerHTML properly
+  li.className = "";
+  document.getElementById("fileList").insertAdjacentHTML("beforeend", buildFileItemHtml(rec));
+}
+
+function buildFileItemHtml(rec) {
+  const f = rec.file;
+  const stMap = {
+    pending: ["fs-pending", "待解析"],
+    loading: ["fs-loading", "解析中…"],
+    done: ["fs-done", "✓ 完成"],
+    error: ["fs-error", "解析失败"]
+  };
+  const [cls, lbl] = stMap[rec.status];
+  const actions = rec.status === "pending"
+    ? `<div class="file-actions">
+        <button onclick="analyzeFile('${rec.id}')">🔍 AI 解析</button>
+        <button onclick="removeFile('${rec.id}')">删除</button>
+       </div>`
+    : rec.status === "error"
+    ? `<div class="file-actions"><button onclick="analyzeFile('${rec.id}')">重试</button><button onclick="removeFile('${rec.id}')">删除</button></div>`
+    : rec.status === "done"
+    ? `<div class="file-actions"><button onclick="toggleResult('${rec.id}')">查看结果 ↕</button><button onclick="removeFile('${rec.id}')">删除</button></div>`
+    : `<div class="progress-bar"><div class="progress-fill" id="prog_${rec.id}" style="width:35%"></div></div>`;
+  const resultHtml = rec.result
+    ? `<div class="analysis-result" id="res_${rec.id}">${formatResult(rec.result)}</div>` : "";
+  return `<div class="file-item" id="fi_${rec.id}">
+    <span class="file-icon">${fileIcon(f.name)}</span>
+    <div class="file-info">
+      <div class="file-name" title="${f.name}">${f.name}</div>
+      <div class="file-size">${fmtSize(f.size)}</div>
+      ${actions}
+    </div>
+    <span class="file-status ${cls}">${lbl}</span>
+  </div>${resultHtml}`;
+}
+
+function refreshItem(rec) {
+  const old = document.getElementById("fi_" + rec.id);
+  const oldRes = document.getElementById("res_" + rec.id);
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = buildFileItemHtml(rec);
+  if (old) { old.replaceWith(wrapper.children[0]); }
+  if (oldRes) { oldRes.remove(); }
+  if (wrapper.children[0]) {
+    const newRes = wrapper.children[0]; // already replaced
+  }
+  // Re-insert result div after fi_
+  const fiEl = document.getElementById("fi_" + rec.id);
+  if (fiEl && rec.result) {
+    const resDiv = document.createElement("div");
+    resDiv.className = "analysis-result";
+    resDiv.id = "res_" + rec.id;
+    resDiv.innerHTML = formatResult(rec.result);
+    fiEl.insertAdjacentElement("afterend", resDiv);
+  }
+}
+
+function formatResult(text) {
+  // Parse structured output
+  let html = '<div style="font-size:12px;font-weight:600;color:var(--adk);margin-bottom:6px">📊 文档解析结果</div>';
+  // Try to extract sections
+  const sections = text.split(/【(.+?)】/).filter(Boolean);
+  if (sections.length > 1) {
+    for (let i = 0; i < sections.length; i += 2) {
+      const title = sections[i];
+      const content = sections[i + 1] || "";
+      html += `<div style="margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;color:var(--p80);margin-bottom:4px">${title}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.6">${content.trim()}</div>
+      </div>`;
+    }
+  } else {
+    html += `<div class="analysis-raw">${text.replace(/\n/g, "<br>")}</div>`;
+  }
+  return html;
+}
+
+function toggleResult(id) {
+  const el = document.getElementById("res_" + id);
+  if (el) el.classList.toggle("show");
+}
+
+function removeFile(id) {
+  fileRecords = fileRecords.filter(r => r.id !== id);
+  document.getElementById("fi_" + id)?.remove();
+  document.getElementById("res_" + id)?.remove();
+}
+
+async function analyzeFile(id) {
+  const rec = fileRecords.find(r => r.id === id);
+  if (!rec) return;
+  rec.status = "loading"; refreshItem(rec);
+
+  // Animate progress bar
+  let pct = 20;
+  const progInterval = setInterval(() => {
+    pct = Math.min(pct + 8, 85);
+    const pb = document.getElementById("prog_" + id);
+    if (pb) pb.style.width = pct + "%";
+  }, 300);
+
+  try {
+    const content = await readFileContent(rec.file);
+    clearInterval(progInterval);
+
+    const result = await callClaudeAnalysis(content, rec.file.name, rec.file.type);
+    rec.result = result; rec.status = "done";
+
+    // Extract keywords for context
+    const keyLine = result.match(/【战略关键词】[：:]\s*(.+)/);
+    if (keyLine) docContext.push(keyLine[1].slice(0, 60));
+
+    refreshItem(rec);
+    toggleResult(id); // Auto-show result
+
+    // Notify in chat
+    addMsg("file-msg",
+      `📄 <strong>${rec.file.name}</strong> 已解析完成，关键信息已注入建模上下文。<br>` +
+      (keyLine ? `发现战略关键词：${keyLine[1].slice(0, 80)}…` : "文档内容已分析，可继续回答对话问题。")
+    );
+
+    // Show inject notice in upload card
+    showInjectNotice(rec.file.name);
+
+  } catch (err) {
+    clearInterval(progInterval);
+    rec.status = "error"; refreshItem(rec);
+    console.error("Analysis error:", err);
+    addMsg("ai", `⚠️ 解析 <strong>${rec.file.name}</strong> 时遇到问题：${err.message || "请检查文件格式或稍后重试"}。`);
+  }
+}
+
+function showInjectNotice(filename) {
+  const existing = document.getElementById("injectNotice");
+  if (existing) {
+    existing.innerHTML = `📥 <strong>${filename}</strong> 等 ${docContext.length} 份文档已解析，关键信息将融入最终摘要`;
+    return;
+  }
+  const notice = document.createElement("div");
+  notice.id = "injectNotice";
+  notice.className = "doc-inject-notice";
+  notice.innerHTML = `📥 <strong>${filename}</strong> 已解析，关键信息将融入最终摘要`;
+  document.getElementById("uploadCard").appendChild(notice);
+}
+
+async function readFileContent(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    return { type: "pdf", data: await toBase64(file) };
+  }
+  if (name.endsWith(".docx") || name.endsWith(".doc")) {
+    const buf = await readArrayBuffer(file);
+    if (typeof mammoth !== "undefined") {
+      const res = await mammoth.extractRawText({ arrayBuffer: buf });
+      return { type: "text", text: res.value };
+    }
+    return { type: "text", text: "[DOCX 内容：mammoth.js 加载中，请稍后重试]" };
+  }
+  // txt, md, etc.
+  const text = await readText(file);
+  return { type: "text", text };
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function readArrayBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsArrayBuffer(file);
+  });
+}
+function readText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsText(file, "UTF-8");
+  });
+}
+
+const ANALYSIS_SYS = `你是一名领导力建模顾问，负责从企业文档中提取与领导力模型构建相关的核心信息。
+请严格按照以下格式输出，每项内容简洁、信息密度高：
+
+【战略关键词】：列出3-8个战略方向或业务重点关键词（逗号分隔）
+【高绩效行为特征】：提取2-4条高绩效管理者的典型行为描述（从岗位要求、绩效标准中提炼）
+【能力要求关键词】：列出文档中出现的管理者能力要求关键词（逗号分隔）
+【建模参考重点】：总结1-2条最值得纳入领导力模型的核心洞察
+
+用中文回答，每项不超过150字。如文档内容较少或无法提取，请如实说明。`;
+
+async function callClaudeAnalysis(content, filename, fileType) {
+  let messages;
+  if (content.type === "pdf") {
+    messages = [{
+      role: "user",
+      content: [
+        { type: "document", source: { type: "base64", media_type: "application/pdf", data: content.data } },
+        { type: "text", text: `请分析这份PDF文档（文件名：${filename}），提取与领导力建模相关的核心信息。` }
+      ]
+    }];
+  } else {
+    const trimmed = (content.text || "").slice(0, 8000);
+    messages = [{
+      role: "user",
+      content: `请分析以下文档内容，提取与领导力建模相关的核心信息。\n\n文件名：${filename}\n\n文档内容：\n${trimmed}`
+    }];
+  }
+
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: ANALYSIS_SYS,
+      messages
+    })
+  });
+  const data = await resp.json();
+  if (!data.content) throw new Error(data.error?.message || "API 返回异常");
+  return data.content.map(c => c.text || "").join("");
+}
+</script>
+</body>
+</html>

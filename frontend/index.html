@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>领导力建模智能体</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.hero { text-align: center; padding: 50px 20px 30px; }
+.hero h1 { font-size: 28px; font-weight: 700; color: var(--p); margin-bottom: 8px; }
+.hero p { font-size: 15px; color: var(--t2); max-width: 560px; margin: 0 auto; line-height: 1.7; }
+.step-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 32px; }
+.sc { background: var(--sf); border-radius: 12px; border: 1px solid var(--br); padding: 22px 18px; text-align: center; box-shadow: var(--sh); transition: all .2s; cursor: pointer; text-decoration: none; color: var(--t1); display: block; }
+.sc:hover { box-shadow: var(--shh); border-color: var(--p); transform: translateY(-2px); }
+.sc-num { width: 36px; height: 36px; border-radius: 50%; background: var(--p10); color: var(--p); font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.sc h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.sc p { font-size: 12.5px; color: var(--t2); line-height: 1.55; }
+.action-area { text-align: center; padding: 10px 0 40px; }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <span class="logo"><span class="logo-dot"></span>领导力建模智能体</span>
+  <nav class="prog"></nav>
+</header>
+
+<div class="main">
+  <div class="hero">
+    <h1>🏆 领导力建模智能体</h1>
+    <p>通过 AI 引导式对话，快速构建贴合企业实际的中层管理者领导力模型，包含维度定义、定位描述和 BARS 行为锚定。</p>
+  </div>
+
+  <div class="step-cards">
+    <a class="sc" href="step1.html">
+      <div class="sc-num">1</div>
+      <h3>信息采集</h3>
+      <p>AI 引导对话收集企业背景，支持上传参考文档</p>
+    </a>
+    <a class="sc" href="step2.html">
+      <div class="sc-num">2</div>
+      <h3>维度确认</h3>
+      <p>AI 生成领导力维度框架，可增删改确认</p>
+    </a>
+    <a class="sc" href="step3.html">
+      <div class="sc-num">3</div>
+      <h3>描述建立</h3>
+      <p>为每个维度生成定位描述，含质检提示</p>
+    </a>
+    <a class="sc" href="step4.html">
+      <div class="sc-num">4</div>
+      <h3>行为锚定</h3>
+      <p>BARS 三档行为描述（优秀/达标/不达标）</p>
+    </a>
+    <a class="sc" href="step5.html">
+      <div class="sc-num">5</div>
+      <h3>总览导出</h3>
+      <p>查看完整模型，导出文档</p>
+    </a>
+  </div>
+
+  <div class="action-area">
+    <button class="btn btn-p btn-lg" onclick="location.href='step1.html'">开始建模 →</button>
+    <p style="margin-top:10px;font-size:12px;color:var(--t3)">或点击上方卡片直接跳转到任意步骤</p>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = err ? '#991B1B' : '#1A1520';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

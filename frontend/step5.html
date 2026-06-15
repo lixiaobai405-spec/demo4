@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>总览导出 - 领导力建模智能体</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.done-banner {
+  background: linear-gradient(135deg, var(--pdk) 0%, var(--p) 55%, var(--p60) 100%);
+  border-radius: 14px; padding: 24px 28px; color: #fff; margin-bottom: 22px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
+.done-banner h2 { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+.done-banner p { font-size: 14px; opacity: .85; line-height: 1.6; }
+.export-btns { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+.btn-word { background: #fff; color: var(--p); border: none; padding: 10px 20px; border-radius: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit; }
+.btn-word:hover { background: var(--p10); }
+.btn-pdf { background: rgba(255,255,255,.2); color: #fff; border: 1.5px solid rgba(255,255,255,.5); padding: 10px 20px; border-radius: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit; }
+.btn-pdf:hover { background: rgba(255,255,255,.3); }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.stat-card { background: var(--sf); border-radius: 11px; border: 1px solid var(--br); padding: 16px 20px; text-align: center; box-shadow: var(--sh); }
+.stat-num { font-size: 30px; font-weight: 700; color: var(--p); line-height: 1.1; }
+.stat-lbl { font-size: 12px; color: var(--t2); margin-top: 5px; font-weight: 500; }
+.ov-list { display: flex; flex-direction: column; gap: 11px; }
+.ov-item { background: var(--sf); border-radius: 12px; border: 1.5px solid var(--br); box-shadow: var(--sh); overflow: hidden; }
+.ov-hd { padding: 14px 18px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.ov-hd:hover { background: var(--sf2); }
+.ov-num { width: 26px; height: 26px; border-radius: 50%; background: var(--p10); color: var(--p80); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ov-nm { font-size: 14.5px; font-weight: 600; flex: 1; color: var(--t1); }
+.ov-chev { font-size: 12px; color: var(--t3); transition: transform .2s; }
+.ov-chev.open { transform: rotate(90deg); }
+.ov-bd { display: none; padding: 0 18px 18px; border-top: 1px solid var(--br); }
+.ov-bd.open { display: block; }
+.ov-desc { font-size: 13.5px; color: var(--t2); line-height: 1.75; padding: 14px 0 12px; }
+.beh-section { margin-bottom: 14px; }
+.beh-section:last-child { margin-bottom: 0; }
+.beh-lbl { font-size: 12px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.beh-item { font-size: 13px; line-height: 1.65; padding: 7px 11px; border-radius: 8px; margin-bottom: 5px; border-left: 2.5px solid; }
+.beh-ex { background: var(--grbg); border-color: var(--gr); color: #1A3025; }
+.beh-st { background: var(--p10); border-color: var(--p); color: var(--pdk); }
+.beh-bl { background: var(--rdbg); border-color: var(--rd); color: #3B1010; }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog">
+    <a class="ps" href="step1.html"><div class="pd done">✓</div><span class="pl">信息采集</span></a><div class="pline done"></div>
+    <a class="ps" href="step2.html"><div class="pd done">✓</div><span class="pl">维度确认</span></a><div class="pline done"></div>
+    <a class="ps" href="step3.html"><div class="pd done">✓</div><span class="pl">描述建立</span></a><div class="pline done"></div>
+    <a class="ps" href="step4.html"><div class="pd done">✓</div><span class="pl">行为锚定</span></a><div class="pline done"></div>
+    <a class="ps" href="step5.html"><div class="pd active">5</div><span class="pl active">总览导出</span></a>
+  </nav>
+</header>
+
+<div class="main">
+  <div id="contentArea">
+    <div class="done-banner">
+      <div>
+        <h2>🏆 领导力模型构建完成！</h2>
+        <p id="bannerSub">中层管理者领导力模型 · 模型就绪</p>
+      </div>
+      <div class="export-btns">
+        <button class="btn-word" onclick="doExport('word')">⬇ 导出 Word</button>
+        <button class="btn-pdf" onclick="doExport('pdf')">⬇ 导出 PDF</button>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="statDims">—</div><div class="stat-lbl">领导力维度</div></div>
+      <div class="stat-card"><div class="stat-num" id="statBehs">—</div><div class="stat-lbl">行为锚定描述</div></div>
+      <div class="stat-card"><div class="stat-num" id="statQc">—</div><div class="stat-lbl">质检通过描述</div></div>
+      <div class="stat-card"><div class="stat-num" id="statTime">—</div><div class="stat-lbl">完成时间</div></div>
+    </div>
+
+    <div class="sec-row">
+      <div class="sec-t">完整模型总览</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-o btn-sm" onclick="expandAll()">全部展开</button>
+        <button class="btn btn-o btn-sm" onclick="collapseAll()">全部收起</button>
+      </div>
+    </div>
+    <div class="ov-list" id="ovList"></div>
+
+    <div style="margin-top:28px;text-align:center;padding:20px;background:var(--sf);border-radius:12px;border:1px solid var(--br)">
+      <p style="font-size:13.5px;color:var(--t2);margin-bottom:14px">需要为其他管理层级建模，或重新构建？</p>
+      <a href="index.html" class="btn btn-o">← 返回首页</a>
+      <button class="btn btn-p" style="margin-left:10px" onclick="restart()">重新建模</button>
+    </div>
+  </div>
+</div>
+
+<footer class="ftr">
+  <a href="step4.html" class="btn btn-o">← 上一步</a>
+  <span class="step-info">步骤 5 / 5</span>
+  <button class="btn btn-p" onclick="restart()">完成 ✓</button>
+</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const savedDims = localStorage.getItem('lm_dims');
+const dims = savedDims ? JSON.parse(savedDims) : [];
+const savedDescs = localStorage.getItem('lm_descs');
+const descs = savedDescs ? JSON.parse(savedDescs) : [];
+const savedAnchors = localStorage.getItem('lm_anchors');
+const anchors = savedAnchors ? JSON.parse(savedAnchors) : [];
+
+let openMap = {};
+
+function init() {
+  if (dims.length === 0) {
+    document.getElementById('contentArea').innerHTML = `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:48px;margin-bottom:16px">📋</div>
+        <h2 style="color:var(--t2);margin-bottom:8px">暂无模型数据</h2>
+        <p style="color:var(--t3);margin-bottom:20px">请先完成前面的步骤</p>
+        <a href="step1.html" class="btn btn-p btn-lg">开始建模 →</a>
+      </div>`;
+    return;
+  }
+
+  // Build merged data
+  const data = dims.map(d => {
+    const desc = descs.find(dd => dd.id === d.id);
+    const anc = anchors.find(a => a.id === d.id);
+    return {
+      id: d.id, nm: d.nm,
+      desc: desc ? desc.desc : '',
+      ex: anc ? anc.ex : [],
+      st: anc ? anc.st : [],
+      bl: anc ? anc.bl : []
+    };
+  });
+
+  const totalBehs = data.reduce((n, d) => n + d.ex.length + d.st.length + d.bl.length, 0);
+  const qcPass = descs.filter(d => d.qc && d.qc.ok).length;
+  const now = new Date();
+  const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+
+  document.getElementById('bannerSub').textContent = `中层管理者领导力模型 · ${dims.length} 个维度 · ${totalBehs} 条行为锚定`;
+  document.getElementById('statDims').textContent = dims.length;
+  document.getElementById('statBehs').textContent = totalBehs;
+  document.getElementById('statQc').textContent = qcPass;
+  document.getElementById('statTime').textContent = timeStr;
+
+  // Render overview items
+  document.getElementById('ovList').innerHTML = data.map((d, i) => {
+    const isOpen = openMap[d.id] || false;
+    return `<div class="ov-item">
+      <div class="ov-hd" onclick="togOv('${d.id}')">
+        <div class="ov-num">${i + 1}</div>
+        <div class="ov-nm">${d.nm}</div>
+        <span class="ov-chev ${isOpen?'open':''}">▶</span>
+      </div>
+      <div class="ov-bd ${isOpen?'open':''}">
+        ${d.desc ? `<div class="ov-desc">${d.desc}</div>` : ''}
+        ${d.ex.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--gr)">⭐ 优秀水平</div>${d.ex.map(t => `<div class="beh-item beh-ex">${t}</div>`).join('')}</div>` : ''}
+        ${d.st.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--p80)">✅ 达标水平</div>${d.st.map(t => `<div class="beh-item beh-st">${t}</div>`).join('')}</div>` : ''}
+        ${d.bl.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--rd)">⚠️ 不达标</div>${d.bl.map(t => `<div class="beh-item beh-bl">${t}</div>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function togOv(id) { openMap[id] = !openMap[id]; init(); }
+function expandAll() { anchors.forEach(a => openMap[a.id] = true); init(); }
+function collapseAll() { openMap = {}; init(); }
+
+function doExport(type) {
+  // Build markdown content
+  const data = dims.map(d => {
+    const desc = descs.find(dd => dd.id === d.id);
+    const anc = anchors.find(a => a.id === d.id);
+    return { ...d, desc: desc ? desc.desc : '', anc };
+  });
+
+  let md = '# 中层管理者领导力模型\n\n';
+  md += `> 生成时间：${new Date().toLocaleString()}\n\n`;
+  md += `## 模型概览\n\n`;
+  md += `- 维度数量：${dims.length}\n`;
+  md += `- 行为锚定：${anchors.reduce((n, a) => n + (a.ex?.length||0) + (a.st?.length||0) + (a.bl?.length||0), 0)} 条\n\n`;
+
+  data.forEach((d, i) => {
+    md += `## ${i + 1}. ${d.nm}\n\n`;
+    if (d.desc) md += `**定位描述**：${d.desc}\n\n`;
+    if (d.anc) {
+      if (d.anc.ex && d.anc.ex.length) { md += `### ⭐ 优秀水平\n\n${d.anc.ex.map(t => `- ${t}`).join('\n')}\n\n`; }
+      if (d.anc.st && d.anc.st.length) { md += `### ✅ 达标水平\n\n${d.anc.st.map(t => `- ${t}`).join('\n')}\n\n`; }
+      if (d.anc.bl && d.anc.bl.length) { md += `### ⚠️ 不达标\n\n${d.anc.bl.map(t => `- ${t}`).join('\n')}\n\n`; }
+    }
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `领导力模型_${new Date().toISOString().slice(0,10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Markdown 文件已下载');
+}
+
+function restart() {
+  localStorage.clear();
+  window.location.href = 'step1.html';
+}
+
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>

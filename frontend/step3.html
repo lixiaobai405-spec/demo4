@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>描述建立 - 领导力建模智能体</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.desc-list { display: flex; flex-direction: column; gap: 12px; }
+.di { background: var(--sf); border-radius: 12px; border: 1.5px solid var(--br); box-shadow: var(--sh); overflow: hidden; }
+.di-hd { padding: 13px 16px 10px; display: flex; align-items: center; gap: 10px; }
+.di-nm { font-size: 14px; font-weight: 600; flex: 1; color: var(--t1); display: flex; align-items: center; gap: 8px; }
+.di-nm::before { content: ""; width: 3px; height: 16px; border-radius: 2px; background: var(--p); flex-shrink: 0; }
+.di-txt { padding: 0 16px 12px; font-size: 13.5px; color: var(--t1); line-height: 1.75; cursor: text; }
+.di-txt:hover { background: var(--sf2); }
+.di-issue { padding: 8px 16px; font-size: 12.5px; background: #FFFBEB; border-top: 1px solid #FDE68A; color: #92400E; }
+.di-ft { padding: 9px 16px; border-top: 1px solid var(--br); display: flex; gap: 8px; background: var(--sf2); }
+.di-ea { padding: 0 16px 12px; }
+.di-ea textarea { width: 100%; border: 1.5px solid var(--br); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; font-family: inherit; resize: vertical; min-height: 72px; outline: none; line-height: 1.7; color: var(--t1); }
+.di-ea textarea:focus { border-color: var(--p); box-shadow: 0 0 0 3px var(--p10); }
+.regen-row { padding: 0 16px 12px; display: flex; gap: 8px; }
+.regen-row input { flex: 1; border: 1.5px solid var(--br); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; color: var(--t1); }
+.regen-row input:focus { border-color: var(--a); box-shadow: 0 0 0 3px var(--a10); }
+.regen-btn { background: var(--a); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.regen-btn:hover { background: var(--a60); }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a>
+  <nav class="prog">
+    <a class="ps" href="step1.html"><div class="pd done">✓</div><span class="pl">信息采集</span></a><div class="pline done"></div>
+    <a class="ps" href="step2.html"><div class="pd done">✓</div><span class="pl">维度确认</span></a><div class="pline done"></div>
+    <a class="ps" href="step3.html"><div class="pd active">3</div><span class="pl active">描述建立</span></a><div class="pline"></div>
+    <a class="ps" href="step4.html"><div class="pd pending">4</div><span class="pl">行为锚定</span></a><div class="pline"></div>
+    <a class="ps" href="step5.html"><div class="pd pending">5</div><span class="pl">总览导出</span></a>
+  </nav>
+</header>
+
+<div class="main">
+  <div class="lcard">
+    <b>维度描述建立（M03）— 第二次人机交接</b>
+    <p>AI 已为每个维度生成针对中层管理者的定位描述。⚠️ 标识含质检提示，点击描述文字可直接编辑，或指定方向重新生成。</p>
+  </div>
+
+  <div id="loadingArea" class="ldg">
+    <div style="font-size:32px;margin-bottom:8px">✨</div>
+    <div class="ldots"><span></span><span></span><span></span></div>
+    <div style="font-size:13.5px;margin-top:4px">AI 正在生成维度定位描述…</div>
+  </div>
+
+  <div id="contentArea" class="hidden">
+    <div class="sec-row"><div class="sec-t">维度定位描述</div></div>
+    <div class="desc-list" id="descList"></div>
+  </div>
+</div>
+
+<footer class="ftr">
+  <a href="step2.html" class="btn btn-o">← 上一步</a>
+  <span class="step-info">步骤 3 / 5</span>
+  <button class="btn btn-p" id="nextBtn" onclick="goNext()">确认描述，生成行为锚定 →</button>
+</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = '/api';
+const MOCK_DESCS = [
+  {id:'D1',nm:'战略引领',desc:'在中层管理者层级，战略引领体现在能够深度理解公司战略意图，将其转化为本部门年度目标和季度优先级，定期向团队解读战略背景，确保成员理解日常工作与战略的连接，保持执行方向不偏离。',qc:{ok:true,issues:[]}},
+  {id:'D2',nm:'团队赋能',desc:'聚焦团队成员的能力成长，通过定期 1on1 识别个人瓶颈，结合项目历练给予针对性辅导，在关键决策中有意识地授权，使成员在承担责任中快速成长，形成自我驱动的学习氛围。',qc:{ok:true,issues:[]}},
+  {id:'D3',nm:'跨部门协作',desc:'主动识别跨部门协作节点，建立定期同步机制，在资源冲突和利益分歧出现时介入斡旋，确保己方需求清晰传递，推动多方达成共识，减少因信息不对称带来的摩擦和延误。',qc:{ok:false,issues:['[空泛词汇] 「及时」建议改为可量化描述']}},
+  {id:'D4',nm:'执行与交付',desc:'将团队目标拆解至每位成员的具体任务，明确时间节点与交付标准，每周追踪关键里程碑，遇到执行偏差当天启动资源协调，确保承诺按期高质量完成。',qc:{ok:true,issues:[]}},
+  {id:'D5',nm:'沟通影响力',desc:'根据汇报对象灵活调整沟通策略：向上聚焦结论和风险，横向强调共同利益，向下重在拆解和激励，确保信息准确传递并被对方真正理解和采纳。',qc:{ok:true,issues:[]}},
+];
+
+let descs = [];
+let editStates = {};
+
+const savedDims = localStorage.getItem('lm_dims');
+const dims = savedDims ? JSON.parse(savedDims) : [];
+const savedDescs = localStorage.getItem('lm_descs');
+if (savedDescs) {
+  try { descs = JSON.parse(savedDescs); } catch(e) {}
+}
+
+async function init() {
+  if (descs.length > 0) { showContent(); return; }
+  if (dims.length === 0) { descs = MOCK_DESCS; showContent(); return; }
+
+  const companyInfo = localStorage.getItem('lm_company_info') || '';
+  const level = companyInfo ? (JSON.parse(companyInfo)['建模层级'] || '中层管理者') : '中层管理者';
+
+  try {
+    const resp = await fetch(`${API}/generate-descriptions`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ dimensions: dims, company_info: companyInfo, level })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    const jsonStr = data.result.replace(/```json\n?|```/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    descs = (parsed.descriptions || []).map(d => ({
+      id: d.dimension_id,
+      nm: d.dimension_name,
+      desc: d.description,
+      qc: { ok: d.qc_pass !== false, issues: d.qc_issues || [] }
+    }));
+    if (descs.length === 0) descs = MOCK_DESCS;
+  } catch (err) {
+    console.error('AI generation failed, using mock:', err);
+    // Map dimensions to mock descriptions
+    descs = dims.map(d => ({
+      id: d.id, nm: d.nm,
+      desc: `在中层管理者层级，「${d.nm}」要求管理者系统性展现相关能力，结合业务特点转化为可观察的具体行动和可衡量成果，并定期复盘持续优化。`,
+      qc: { ok: true, issues: [] }
+    }));
+    if (descs.length === 0) descs = MOCK_DESCS;
+  }
+  showContent();
+}
+
+function showContent() {
+  document.getElementById('loadingArea').classList.add('hidden');
+  document.getElementById('contentArea').classList.remove('hidden');
+  render();
+}
+
+function render() {
+  document.getElementById('descList').innerHTML = descs.map(d => {
+    const ok = d.qc.ok && !d.qc.issues.length;
+    const es = editStates[d.id] || {};
+    return `<div class="di">
+      <div class="di-hd">
+        <div class="di-nm">${d.nm}</div>
+        <span class="badge ${ok?'bg-gr':'bg-am'}">${ok?'✅ 质检通过':'⚠️ 建议审阅'}</span>
+      </div>
+      ${es.editing ? `<div class="di-ea"><textarea id="ta_${d.id}">${d.desc}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-p btn-sm" onclick="saveDesc('${d.id}')">保存</button>
+          <button class="btn btn-o btn-sm" onclick="cancelEdit('${d.id}')">取消</button>
+        </div></div>`
+      : `<div class="di-txt" onclick="startEdit('${d.id}')" title="点击编辑">${d.desc}</div>
+         ${d.qc.issues.map(i => `<div class="di-issue">⚠️ ${i}</div>`).join('')}
+         <div class="di-ft">
+           <button class="btn btn-g btn-sm" onclick="startEdit('${d.id}')">✏️ 编辑</button>
+           <button class="btn btn-g btn-sm" onclick="toggleRegen('${d.id}')">🔄 重新生成</button>
+         </div>`}
+      ${es.regen && !es.editing ? `<div class="regen-row">
+        <input id="rd_${d.id}" placeholder="输入修改方向，如：更聚焦业务结果…">
+        <button class="regen-btn" onclick="regenDesc('${d.id}')">生成</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function startEdit(id) { editStates[id] = {editing: true, regen: false}; render(); setTimeout(() => document.getElementById('ta_'+id)?.focus(), 50); }
+function cancelEdit(id) { editStates[id] = {}; render(); }
+function saveDesc(id) {
+  const d = descs.find(x => x.id === id);
+  if (d) { d.desc = document.getElementById('ta_'+id).value; d.qc = {ok: true, issues: []}; }
+  editStates[id] = {}; render();
+}
+function toggleRegen(id) { editStates[id] = {...(editStates[id]||{}), regen: !(editStates[id]?.regen)}; render(); setTimeout(() => document.getElementById('rd_'+id)?.focus(), 50); }
+
+async function regenDesc(id) {
+  const d = descs.find(x => x.id === id); if (!d) return;
+  const dir = document.getElementById('rd_'+id)?.value || '优化表述';
+  editStates[id] = {};
+  d.desc = '⏳ 重新生成中…'; render();
+  try {
+    const resp = await fetch(`${API}/regenerate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ original: d.desc, direction: dir, item_type: '定位描述' })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    const jsonStr = data.result.replace(/```json\n?|```/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    d.desc = parsed.result || data.result;
+  } catch (err) {
+    d.desc = `根据「${dir}」方向重新生成：在中层管理者层级，${d.nm}要求管理者系统性展现相关能力，结合企业业务特点将其转化为可观察的具体行动和可衡量的工作成果，并定期复盘持续优化。`;
+  }
+  d.qc = {ok: true, issues: []};
+  render();
+}
+
+function goNext() {
+  localStorage.setItem('lm_descs', JSON.stringify(descs));
+  window.location.href = 'step4.html';
+}
+
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>
