@@ -59,15 +59,21 @@ def build_docx_bytes(model):
     return buffer.getvalue()
 
 
+def _key(d):
+    """兼容 id / dimension_id 两种字段名"""
+    return d.get("id") or d.get("dimension_id") or ""
+
+
 def build_markdown(model):
     """生成 Markdown 文本"""
     ctx = _norm(model.get("context") or {})
     dims = model.get("dimensions") or []
-    descs = {d.get("id"): d for d in (model.get("descriptions") or [])}
-    anchors = {a.get("dimension_id") or a.get("id"): a for a in (model.get("anchors") or [])}
+    descs = {_key(d): d for d in (model.get("descriptions") or [])}
+    anchors = {_key(a): a for a in (model.get("anchors") or [])}
 
+    company_label = _g(ctx, 'company_name') or _g(ctx, 'industry', '企业')
     lines = [
-        f"# {_g(ctx, 'industry', '企业')} {_g(ctx, 'target_group', '管理者')} 领导力模型",
+        f"# {company_label} {_g(ctx, 'target_group', '管理者')} 领导力模型",
         "",
         f"> 生成时间：{model.get('date', '')}",
         "",
@@ -120,8 +126,8 @@ def build_markdown(model):
 def _build_paragraphs(model):
     ctx = _norm(model.get("context") or {})
     dims = model.get("dimensions") or []
-    descs = {d.get("id"): d for d in (model.get("descriptions") or [])}
-    anchors = {a.get("dimension_id") or a.get("id"): a for a in (model.get("anchors") or [])}
+    descs = {_key(d): d for d in (model.get("descriptions") or [])}
+    anchors = {_key(a): a for a in (model.get("anchors") or [])}
 
     title = _g(ctx, "industry", "企业") + " " + _g(ctx, "target_group", "管理者") + " 领导力模型"
     paragraphs = [
@@ -134,7 +140,7 @@ def _build_paragraphs(model):
     ]
 
     for dim in dims:
-        dim_id = dim.get("id")
+        dim_id = _key(dim)
         desc = descs.get(dim_id, {})
         anc = anchors.get(dim_id, {})
         anc_data = anc.get("anchors", {})
