@@ -21,3 +21,8 @@ backend/uploads/
 
 # Database (auto-generated)
 backend/app.db
+
+# Generated output files
+领导力模型_*.docx
+领导力模型_*.md
+test.docx

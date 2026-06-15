@@ -1,10 +1,49 @@
 """
 导出服务 — DOCX（纯XML生成） + Markdown
-借鉴 demo2 leadership_export.py 的 DOCX 生成方式
+借鉴 demo2 leadership_export.py
 """
 import html
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
+
+
+# ── Context normalization ─────────────────────────────────
+
+
+def _norm(ctx):
+    """标准化 context：兼容中英文key"""
+    if not ctx:
+        return {}
+    c = dict(ctx)
+    mapping = {
+        "行业/业务": "industry", "规模/阶段": "scale",
+        "战略重点": "strategy", "管理痛点": "pains",
+        "建模层级": "target_group", "优秀画像": "profile",
+    }
+    for cn, en in mapping.items():
+        if cn in c:
+            c[en] = c[cn]
+    return c
+
+
+def _g(ctx, key, default=""):
+    """安全获取，自动查中英文key"""
+    if key in ctx:
+        return str(ctx[key] or default)
+    # Try Chinese alias
+    alias = {
+        "company_name": "行业/业务", "industry": "行业/业务",
+        "target_group": "建模层级", "strategy": "战略重点",
+        "pains": "管理痛点", "profile": "优秀画像",
+        "scale": "规模/阶段",
+    }
+    cn = alias.get(key)
+    if cn and cn in ctx:
+        return str(ctx[cn] or default)
+    return default
+
+
+# ── Public API ────────────────────────────────────────────
 
 
 def build_docx_bytes(model):
@@ -22,21 +61,23 @@ def build_docx_bytes(model):
 
 def build_markdown(model):
     """生成 Markdown 文本"""
-    context = model.get("context") or {}
+    ctx = _norm(model.get("context") or {})
     dims = model.get("dimensions") or []
     descs = {d.get("id"): d for d in (model.get("descriptions") or [])}
     anchors = {a.get("dimension_id") or a.get("id"): a for a in (model.get("anchors") or [])}
 
     lines = [
-        f"# {context.get('company_name', '企业')} {context.get('target_group', '管理者')} 领导力模型",
+        f"# {_g(ctx, 'industry', '企业')} {_g(ctx, 'target_group', '管理者')} 领导力模型",
         "",
         f"> 生成时间：{model.get('date', '')}",
         "",
         "## 模型概览",
         "",
         f"- 维度数量：{len(dims)}",
-        f"- 行业：{context.get('industry', '未提供')}",
-        f"- 建模层级：{context.get('target_group', '未指定')}",
+        f"- 行业：{_g(ctx, 'industry', '未提供')}",
+        f"- 规模：{_g(ctx, 'scale', '未提供')}",
+        f"- 战略重点：{_g(ctx, 'strategy', '未提供')}",
+        f"- 建模层级：{_g(ctx, 'target_group', '未指定')}",
         "",
         "---",
         "",
@@ -57,45 +98,38 @@ def build_markdown(model):
             lines.append("")
 
         anc_data = anc.get("anchors", {})
-        excellent = _anchor_texts(anc_data, "excellent")
-        standard = _anchor_texts(anc_data, "standard")
-        below = _anchor_texts(anc_data, "below")
-
-        if excellent:
-            lines.append("### ⭐ 优秀水平")
-            lines.append("")
-            for t in excellent:
-                lines.append(f"- {t}")
-            lines.append("")
-        if standard:
-            lines.append("### ✅ 达标水平")
-            lines.append("")
-            for t in standard:
-                lines.append(f"- {t}")
-            lines.append("")
-        if below:
-            lines.append("### ⚠️ 不达标")
-            lines.append("")
-            for t in below:
-                lines.append(f"- {t}")
-            lines.append("")
+        for level_key, emoji_label in [
+            ("excellent", "优秀水平"),
+            ("standard", "达标水平"),
+            ("below", "不达标"),
+        ]:
+            texts = _anchor_texts(anc_data, level_key)
+            if texts:
+                lines.append(f"### {emoji_label}")
+                lines.append("")
+                for t in texts:
+                    lines.append(f"- {t}")
+                lines.append("")
 
     return "\n".join(lines)
 
 
+# ── Internal ──────────────────────────────────────────────
+
+
 def _build_paragraphs(model):
-    context = model.get("context") or {}
+    ctx = _norm(model.get("context") or {})
     dims = model.get("dimensions") or []
     descs = {d.get("id"): d for d in (model.get("descriptions") or [])}
     anchors = {a.get("dimension_id") or a.get("id"): a for a in (model.get("anchors") or [])}
 
-    title = f"《{context.get('company_name', '企业')} {context.get('target_group', '管理者')} 领导力模型》"
+    title = _g(ctx, "industry", "企业") + " " + _g(ctx, "target_group", "管理者") + " 领导力模型"
     paragraphs = [
         ("title", title),
-        ("body", f"版本：V1.0"),
-        ("body", f"适用对象：{context.get('target_group', '--')}"),
+        ("body", "版本：V1.0"),
+        ("body", "适用对象：" + _g(ctx, "target_group", "--")),
         ("heading", "第一章 模型概述"),
-        ("body", _background_text(context)),
+        ("body", _bg_text(ctx)),
         ("heading", "第二章 维度详解"),
     ]
 
@@ -105,25 +139,25 @@ def _build_paragraphs(model):
         anc = anchors.get(dim_id, {})
         anc_data = anc.get("anchors", {})
 
-        paragraphs.append(("heading", f"{dim_id} {dim.get('name', '未命名')}"))
-        paragraphs.append(("body", f"维度定义：{dim.get('definition', '--')}"))
-        paragraphs.append(("body", f"定位描述：{desc.get('description', '--')}"))
+        paragraphs.append(("heading", dim_id + " " + (dim.get("name") or "未命名")))
+        paragraphs.append(("body", "维度定义：" + (dim.get("definition") or "--")))
+        paragraphs.append(("body", "定位描述：" + (desc.get("description") or "--")))
         paragraphs.append(("body", "优秀行为：" + "；".join(_anchor_texts(anc_data, "excellent") or ["--"])))
         paragraphs.append(("body", "达标行为：" + "；".join(_anchor_texts(anc_data, "standard") or ["--"])))
         paragraphs.append(("body", "不达标表现：" + "；".join(_anchor_texts(anc_data, "below") or ["--"])))
 
     paragraphs.append(("heading", "附录A 建模方法说明"))
-    paragraphs.append(("body", "本模型采用 AI 辅助建模方式，融合企业背景、用户访谈、上传文档与标准库参照形成。"))
-
+    paragraphs.append(("body", "本模型采用 AI 辅助建模方式，融合企业背景、用户访谈与标准库参照形成。"))
     return paragraphs
 
 
-def _background_text(context):
-    text = (
-        f"{context.get('company_name', '企业')}属于{context.get('industry', '未提供行业')}，"
-        f"聚焦{context.get('target_group', '目标管理群体')}。"
+def _bg_text(ctx):
+    return (
+        f"本模型聚焦{_g(ctx, 'target_group', '目标管理群体')}，"
+        f"围绕{_g(ctx, 'strategy', '未提供战略')}等战略重点，"
+        f"针对{_g(ctx, 'pains', '未提供痛点')}等管理挑战建立。"
+        f"行业背景：{_g(ctx, 'industry', '未提供')}，规模：{_g(ctx, 'scale', '未提供')}。"
     )
-    return text
 
 
 def _anchor_texts(anchor_data, level):
@@ -133,7 +167,8 @@ def _anchor_texts(anchor_data, level):
     return [item.get("text") if isinstance(item, dict) else str(item) for item in items]
 
 
-# ── DOCX XML Templates ────────────────────────────────────────
+# ── DOCX XML Templates ────────────────────────────────────
+
 
 def _document_xml(paragraphs):
     body = "".join(_para_xml(style, text) for style, text in paragraphs)

@@ -7,7 +7,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, Response, request, jsonify, send_from_directory
 from flask_cors import CORS
 from backend.config import MAX_UPLOAD_SIZE, ALLOWED_EXTENSIONS, load_settings
 from backend.ai_service import (
@@ -249,11 +249,14 @@ def api_export():
     try:
         if export_format == "docx":
             from backend.export_service import build_docx_bytes
+            from urllib.parse import quote
             content = build_docx_bytes(model)
-            return content, 200, {
-                "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "Content-Disposition": "attachment; filename=领导力模型.docx",
-            }
+            filename = quote("领导力模型.docx")
+            return Response(
+                content,
+                mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+            )
         elif export_format == "markdown":
             from backend.export_service import build_markdown
             md = build_markdown(model)
