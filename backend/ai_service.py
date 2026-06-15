@@ -247,3 +247,204 @@ def regenerate_item(original: str, direction: str, item_type: str) -> str:
     result = _call_deepseek(SYSTEM_PROMPT, prompt, max_tokens=1000)
     payload = _extract_json(result)
     return payload.get("result", result)
+
+
+# ═══════════════════════════════════════════════════════════
+#  质量审计 + 残差式定向修复
+# ═══════════════════════════════════════════════════════════
+
+BANNED_WORDS = [
+    "主动", "积极", "高度", "认真", "负责",
+    "努力", "认可", "重视", "关注", "善于",
+    "较强", "具备", "出色", "优秀", "良好",
+]
+
+# 复合词白名单：包含禁用词但不是空泛用法
+BANNED_WHITELIST = ["负责人", "优秀水平", "优秀行为", "高度重视"]  # 作为职位/标题使用
+
+
+def audit_text(text: str, context: str = "") -> list[str]:
+    """审计单段文本，返回问题列表（空列表=通过）"""
+    issues = []
+    # 1. 禁用词检查
+    for word in BANNED_WORDS:
+        if word in text:
+            # 检查是否在白名单复合词中
+            whitelisted = any(wl in text and word in wl for wl in BANNED_WHITELIST)
+            if not whitelisted:
+                # 需要确认不是复合词的一部分
+                # 若 word="负责"且"负责人"在text中，则不算违规
+                if word == "负责" and "负责人" in text:
+                    continue
+                if word == "优秀" and ("优秀水平" in text or "优秀行为" in text):
+                    continue
+                issues.append(f"包含禁用词「{word}」，请替换为具体的行为描述")
+    # 2. 行为动词检查（仅对行为锚定文本）
+    if context == "anchor":
+        first_char = text.strip()[0] if text.strip() else ""
+        weak_starts = {"在", "为", "与", "和", "对", "从", "以", "通", "按", "凭", "通", "将"}
+        if first_char in weak_starts:
+            issues.append(f"行为应以强动词开头，当前以「{first_char}」开头")
+    # 3. 长度检查
+    if context == "description":
+        ln = len(text)
+        if ln < 50:
+            issues.append(f"描述过短({ln}字)，需≥50字")
+        elif ln > 120:
+            issues.append(f"描述过长({ln}字)，需≤120字")
+    return issues
+
+
+def retry_item_with_feedback(
+    item_type: str,
+    original: str,
+    issues: list[str],
+    dimension_name: str = "",
+    max_retries: int = 2,
+) -> str:
+    """残差式修复：仅针对具体问题重新生成，保留原始内容框架"""
+    if not issues:
+        return original
+
+    feedback = "\n".join(f"- {issue}" for issue in issues)
+    prompt = f"""修复以下{ item_type }中的质量问题，保留原始内容的优点和框架，仅修改有问题的部分。
+
+维度：{dimension_name}
+原始内容：{original}
+
+需要修复的问题：
+{feedback}
+
+修复规则：
+1. 禁用词替换：用具体可观察的动词/描述替代空泛词
+   - "主动"→"牵头/发起/率先"
+   - "积极"→删除或用"推动/促成"
+   - "负责"→"承担/主导/管理"（注意："负责人"作为职位名可使用）
+   - "优秀/良好"→具体描述好在哪
+   - "高度重视"→"优先保障/投入额外资源"
+2. 行为以强动词开头（制定/推动/识别/建立/拆解/复盘/组织/协调/设定/追踪）
+3. 保持长度在合理范围
+
+只输出修复后的完整内容，不要输出解释或JSON包装。"""
+    for attempt in range(max_retries):
+        result = _call_deepseek(SYSTEM_PROMPT, prompt, max_tokens=800)
+        # 清理可能的JSON包装
+        result = result.strip().strip('"').strip("'")
+        try:
+            parsed = json.loads(result)
+            if isinstance(parsed, dict) and "result" in parsed:
+                result = parsed["result"]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        # 验证修复效果
+        remaining = audit_text(result, "description" if item_type == "定位描述" else "anchor")
+        if not remaining:
+            return result
+        if attempt < max_retries - 1:
+            # 还有重试机会，追加反馈
+            feedback += "\n" + "\n".join(f"- [仍存在] {r}" for r in remaining)
+    # 所有重试都失败，返回原始内容（标记问题）
+    return original
+
+
+def generate_with_audit(
+    generate_fn,
+    audit_context: str,
+    *args,
+    max_total_retries: int = 2,
+    **kwargs,
+):
+    """
+    生成+审计+残差修复的通用包装器。
+
+    generate_fn: 生成函数
+    audit_context: "dimension" | "description" | "anchor"
+    返回: (result, audit_report)
+    """
+    result = generate_fn(*args, **kwargs)
+    report = {"total": 0, "passed": 0, "fixed": 0, "failed": 0, "details": []}
+
+    items = []
+    if isinstance(result, dict) and "recommended" in result:
+        # dimensions result
+        all_items = result.get("recommended", []) + result.get("alternatives", [])
+        items = all_items
+        for item in all_items:
+            report["total"] += 1
+            text = item.get("definition", "")
+            issues = audit_text(text, "dimension")
+            name = item.get("name", "")
+            detail = {"name": name, "issues": issues, "fixed": False}
+            if issues:
+                new_def = retry_item_with_feedback(
+                    "维度定义", text, issues, name, max_retries=max_total_retries
+                )
+                if new_def != text and not audit_text(new_def, "dimension"):
+                    item["definition"] = new_def
+                    detail["fixed"] = True
+                    report["fixed"] += 1
+                else:
+                    report["failed"] += 1
+            else:
+                report["passed"] += 1
+            report["details"].append(detail)
+
+    elif isinstance(result, list):
+        # descriptions or anchors list
+        items = result
+        for item in items:
+            report["total"] += 1
+            if audit_context == "description":
+                text = item.get("description", "")
+                name = item.get("dimension_name", "")
+            else:
+                # anchor - audit all behavior texts
+                name = item.get("dimension_name", "")
+                anc = item.get("anchors", {})
+                all_texts = []
+                for level in ["excellent", "standard", "below"]:
+                    for b in anc.get(level, []):
+                        all_texts.append(b.get("text", "") if isinstance(b, dict) else str(b))
+                text = " ".join(all_texts)
+
+            issues = audit_text(text, audit_context)
+            detail = {"name": name, "issues": issues, "fixed": False}
+
+            if issues and audit_context == "description":
+                new_desc = retry_item_with_feedback(
+                    "定位描述", text, issues, name, max_retries=max_total_retries
+                )
+                if new_desc != text and not audit_text(new_desc, "description"):
+                    item["description"] = new_desc
+                    item["quality_check"] = {"passed": True, "issues": []}
+                    detail["fixed"] = True
+                    report["fixed"] += 1
+                else:
+                    item["quality_check"] = {"passed": False, "issues": issues}
+                    report["failed"] += 1
+            elif issues and audit_context == "anchor":
+                # 对每条行为单独修复
+                anc = item.get("anchors", {})
+                fixed_any = False
+                for level in ["excellent", "standard", "below"]:
+                    for b in anc.get(level, []):
+                        if isinstance(b, dict):
+                            bt = b.get("text", "")
+                            bt_issues = audit_text(bt, "anchor")
+                            if bt_issues:
+                                new_bt = retry_item_with_feedback(
+                                    "行为描述", bt, bt_issues, name, max_retries=max_total_retries
+                                )
+                                if new_bt != bt and not audit_text(new_bt, "anchor"):
+                                    b["text"] = new_bt
+                                    fixed_any = True
+                if fixed_any:
+                    detail["fixed"] = True
+                    report["fixed"] += 1
+                else:
+                    report["failed"] += 1
+            else:
+                report["passed"] += 1
+            report["details"].append(detail)
+
+    return result, report

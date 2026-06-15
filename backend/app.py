@@ -17,6 +17,7 @@ from backend.ai_service import (
     generate_descriptions,
     generate_anchors,
     regenerate_item,
+    generate_with_audit,
     LLMError,
 )
 from backend.auth_db import init_auth_db
@@ -168,8 +169,12 @@ def api_generate_dimensions():
     if not data or "company_info" not in data:
         return jsonify({"error": "company_info required"}), 400
     try:
-        result = generate_dimensions(data["company_info"], data.get("level", "中层管理者"))
-        return jsonify({"result": result})
+        result, report = generate_with_audit(
+            generate_dimensions, "dimension",
+            data["company_info"], data.get("level", "中层管理者"),
+            max_total_retries=2,
+        )
+        return jsonify({"result": result, "audit": report})
     except LLMError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
@@ -184,12 +189,14 @@ def api_generate_descriptions():
     if not data or "dimensions" not in data:
         return jsonify({"error": "dimensions required"}), 400
     try:
-        result = generate_descriptions(
+        result, report = generate_with_audit(
+            generate_descriptions, "description",
             data["dimensions"],
             data.get("company_info", ""),
             data.get("level", "中层管理者"),
+            max_total_retries=2,
         )
-        return jsonify({"result": result})
+        return jsonify({"result": result, "audit": report})
     except LLMError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
@@ -204,12 +211,14 @@ def api_generate_anchors():
     if not data or "dimensions" not in data:
         return jsonify({"error": "dimensions required"}), 400
     try:
-        result = generate_anchors(
+        result, report = generate_with_audit(
+            generate_anchors, "anchor",
             data["dimensions"],
             data.get("company_info", ""),
             data.get("level", "中层管理者"),
+            max_total_retries=2,
         )
-        return jsonify({"result": result})
+        return jsonify({"result": result, "audit": report})
     except LLMError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
