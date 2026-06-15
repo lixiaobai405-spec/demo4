@@ -66,5 +66,5 @@ def logout_session():
 
 
 def _now_str():
-    from datetime import datetime
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None).isoformat() + "Z"

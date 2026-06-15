@@ -5,7 +5,7 @@
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -72,7 +72,7 @@ def login_user(email, password):
 
 def _create_login_session(user_id):
     token = secrets.token_urlsafe(32)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     expires = now + timedelta(days=SESSION_DAYS)
     create_session(
         uuid.uuid4().hex,
@@ -89,7 +89,7 @@ def hash_token(token):
 
 
 def _utcnow_str():
-    return _fmt(datetime.utcnow())
+    return _fmt(datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 def _fmt(dt):
