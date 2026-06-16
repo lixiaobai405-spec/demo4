@@ -57,7 +57,10 @@
     <div class="sec-row">
       <div><div class="sec-t">领导力维度框架</div>
       <div class="sec-s" id="okCount">已确认 <strong style="color:var(--gr)">0</strong> / 0 个 · 至少需要 3 个</div></div>
-      <button class="btn btn-o btn-sm" onclick="confirmAll()">全部确认</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-o btn-sm" onclick="confirmAll()">全部确认</button>
+        <button class="btn btn-a btn-sm" onclick="openAdd()">＋ 手动添加</button>
+      </div>
     </div>
     <div class="dim-grid" id="dimGrid"></div>
     <div class="alt-pool">
@@ -75,10 +78,20 @@
 
 <div class="modal-bg" id="editModal">
   <div class="modal-box">
-    <div class="modal-hd"><span>编辑维度</span><button class="modal-x" onclick="closeModal()">×</button></div>
-    <div class="ff"><label>维度名称</label><input id="editName" type="text"></div>
-    <div class="ff"><label>定义说明（2-3句话）</label><textarea id="editDef" rows="3"></textarea></div>
-    <div class="modal-ft"><button class="btn btn-o btn-sm" onclick="closeModal()">取消</button><button class="btn btn-p btn-sm" onclick="saveEdit()">保存</button></div>
+    <div class="modal-hd"><span id="modalTitle">编辑维度</span><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="ff"><label>维度名称 *</label><input id="editName" type="text" placeholder="2-5字，如：团队管理"></div>
+    <div class="ff"><label>定义说明 *（2-3句话）</label><textarea id="editDef" rows="3" placeholder="描述该维度的核心行为要求"></textarea></div>
+    <div class="ff"><label>优先级</label>
+      <select id="editPri">
+        <option value="core">核心 (core)</option>
+        <option value="important" selected>重要 (important)</option>
+        <option value="supplementary">补充 (supplementary)</option>
+      </select>
+    </div>
+    <div class="ff"><label>🔵 战略来源</label><input id="editSrcStg" type="text" placeholder="如：战略文档关键词"></div>
+    <div class="ff"><label>🟠 框架来源</label><input id="editSrcFwk" type="text" placeholder="如：Hay Group模型"></div>
+    <div class="ff"><label>🟢 访谈来源</label><input id="editSrcInt" type="text" placeholder="如：对话归纳"></div>
+    <div class="modal-ft"><button class="btn btn-o btn-sm" onclick="closeModal()">取消</button><button class="btn btn-p btn-sm" id="saveEditBtn" onclick="saveEdit()">保存</button></div>
   </div>
 </div>
 
@@ -193,7 +206,7 @@ function render() {
 
   document.getElementById('dimGrid').innerHTML = dims.map(d => {
     return `<div class="dc ${d.ok?'confirmed':''}">
-      <div class="dc-hd"><div class="dc-nm">${d.nm}</div><span class="badge ${pc[d.pri]||'bg-gy'}">${pl[d.pri]||'补充'}</span></div>
+      <div class="dc-hd"><div class="dc-nm">${d.nm}</div><span class="badge ${pc[d.pri]||'bg-gy'}">${pl[d.pri]||'补充'}</span>${d.manual ? '<span class="badge bg-gy">👤 手动</span>' : ''}</div>
       <div class="dc-df">${d.df}</div>
       ${renderSources(d.sources)}
       <div class="dc-ft">
@@ -224,15 +237,79 @@ function addAlt(id) {
 function openEdit(id) {
   const d = dims.find(x => x.id === id); if (!d) return;
   editId = id;
+  document.getElementById('modalTitle').textContent = '编辑维度';
   document.getElementById('editName').value = d.nm;
   document.getElementById('editDef').value = d.df;
+  document.getElementById('editPri').value = d.pri || 'important';
+  document.getElementById('editSrcStg').value = (d.sources && d.sources.strategy) || '';
+  document.getElementById('editSrcFwk').value = (d.sources && d.sources.framework) || '';
+  document.getElementById('editSrcInt').value = (d.sources && d.sources.interview) || '';
+  document.getElementById('saveEditBtn').disabled = false;
   document.getElementById('editModal').classList.add('show');
 }
-function closeModal() { document.getElementById('editModal').classList.remove('show'); editId = null; }
+function closeModal() {
+  document.getElementById('editModal').classList.remove('show');
+  editId = null;
+}
+function openAdd() {
+  editId = '__new__';
+  document.getElementById('modalTitle').textContent = '手动添加维度';
+  document.getElementById('editName').value = '';
+  document.getElementById('editDef').value = '';
+  document.getElementById('editPri').value = 'important';
+  document.getElementById('editSrcStg').value = '';
+  document.getElementById('editSrcFwk').value = '';
+  document.getElementById('editSrcInt').value = '';
+  document.getElementById('saveEditBtn').disabled = true;
+  document.getElementById('editModal').classList.add('show');
+  // 监听名称输入，空值时禁用保存
+  document.getElementById('editName').oninput = function() {
+    document.getElementById('saveEditBtn').disabled = !this.value.trim();
+  };
+}
 function saveEdit() {
-  const d = dims.find(x => x.id === editId);
-  if (d) { d.nm = document.getElementById('editName').value; d.df = document.getElementById('editDef').value; }
-  closeModal(); render();
+  const name = document.getElementById('editName').value.trim();
+  if (!name) return;
+
+  const def = document.getElementById('editDef').value.trim();
+  const pri = document.getElementById('editPri').value;
+  const sources = {
+    strategy: document.getElementById('editSrcStg').value.trim(),
+    framework: document.getElementById('editSrcFwk').value.trim(),
+    interview: document.getElementById('editSrcInt').value.trim(),
+  };
+
+  if (editId === '__new__') {
+    // 重名检测
+    if (dims.some(d => d.nm === name)) {
+      if (!confirm(`已存在同名维度「${name}」，是否继续添加？`)) {
+        closeModal();
+        return;
+      }
+    }
+    dims.push({
+      id: 'U_' + Date.now().toString(36),
+      nm: name,
+      df: def,
+      pri: pri,
+      rationale: '',
+      sources: sources,
+      ok: true,
+      manual: true
+    });
+  } else {
+    const d = dims.find(x => x.id === editId);
+    if (d) {
+      d.nm = name;
+      d.df = def;
+      d.pri = pri;
+      d.sources = sources;
+    }
+  }
+  // 同步 localStorage
+  localStorage.setItem('lm_dims', JSON.stringify(dims.filter(d => d.ok)));
+  closeModal();
+  render();
 }
 function goNext() {
   const confirmed = dims.filter(d => d.ok);
