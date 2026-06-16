@@ -137,13 +137,35 @@ def analyze_document(text: str, filename: str) -> str:
     return _call_deepseek(DOC_ANALYSIS_SYS, user_prompt, max_tokens=1000)
 
 
-def generate_dimensions(company_info: str, level: str = "中层管理者") -> dict:
+def generate_dimensions(company_info: str, level: str = "中层管理者", use_kb: bool = True) -> dict:
     """Step2: 生成维度 → 返回结构化 dict"""
+    # ── 知识库上下文 ──
+    kb_context = ""
+    if use_kb:
+        try:
+            from backend.knowledge_base import build_kb_context
+            kb_context = build_kb_context(company_info, level)
+        except Exception:
+            kb_context = ""  # 知识库异常时退化到纯AI生成
+
+    kb_instruction = f"""
+【领导力知识库 @LN 参考】
+以下是从标准领导力知识库中匹配的相关维度。请优先选择最匹配的4-6个作为推荐维度（直接使用其ID），再从知识库中选3-5个次相关的作为备选维度。
+{ kb_context if kb_context else '（知识库暂无匹配条目，请根据企业信息自主生成。）' }
+
+要求：
+1. 推荐维度优先从上述知识库中选择，使用知识库条目的ID（如 LN-001）和名称
+2. 如果知识库没有完全匹配的某个企业特殊需求，可生成1-2个自定义维度（ID使用D前缀）
+3. 每个维度的 sources 字段标注来源：framework 填知识库参考框架名，strategy 填战略文档关键词，interview 填对话归纳
+4. 备选维度池从知识库次相关条目中选3-5个
+"""
     prompt = f"""根据以下企业信息，为{level}生成推荐维度和备选维度。
 企业背景：{company_info}
 
+{kb_instruction}
+
 输出 JSON：
-{{"recommended":[{{"id":"D1","name":"2-5字","definition":"2-3句定义","sources":{{"strategy":"战略来源","framework":"框架来源","interview":"访谈来源"}},"priority":"core|important|supplementary","rationale":"1句理由"}}],"alternatives":[]}}
+{{"recommended":[{{"id":"LN-001","name":"2-5字","definition":"2-3句定义","sources":{{"strategy":"战略来源","framework":"框架来源","interview":"访谈来源"}},"priority":"core|important|supplementary","rationale":"1句理由"}}],"alternatives":[]}}
 
 要求：
 - 推荐4-6个核心/重要维度，备选3-5个补充维度
@@ -158,27 +180,21 @@ def generate_dimensions(company_info: str, level: str = "中层管理者") -> di
     recommended = payload.get("recommended") or payload.get("dimensions") or []
     alternatives = payload.get("alternatives") or []
 
+    def normalize_dim(d, idx):
+        """规范化维度字段，确保必需字段存在"""
+        dim_id = d.get("id", f"D{idx+1}")
+        return {
+            "id": dim_id,
+            "name": d.get("name", ""),
+            "definition": d.get("definition", ""),
+            "sources": d.get("sources", {}),
+            "priority": d.get("priority", "important"),
+            "rationale": d.get("rationale", ""),
+        }
+
     return {
-        "recommended": [
-            {
-                "id": d.get("id", f"D{i+1}"),
-                "name": d.get("name", ""),
-                "definition": d.get("definition", ""),
-                "sources": d.get("sources", {}),
-                "priority": d.get("priority", "important"),
-                "rationale": d.get("rationale", ""),
-            }
-            for i, d in enumerate(recommended)
-        ],
-        "alternatives": [
-            {
-                "id": d.get("id", f"DA{i+1}"),
-                "name": d.get("name", ""),
-                "definition": d.get("definition", ""),
-                "priority": d.get("priority", "supplementary"),
-            }
-            for i, d in enumerate(alternatives)
-        ],
+        "recommended": [normalize_dim(d, i) for i, d in enumerate(recommended)],
+        "alternatives": [normalize_dim(d, i) for i, d in enumerate(alternatives)],
     }
 
 
