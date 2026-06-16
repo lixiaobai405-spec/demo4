@@ -200,13 +200,19 @@ function renderSources(sources) {
   return tags.length ? `<div class="dc-src">${tags.join('')}</div>` : '';
 }
 
+function sourceBadge(d) {
+  if (d.id && d.id.startsWith('LN-')) return '<span class="badge bg-a">📚 标准库</span>';
+  if (d.id && d.id.startsWith('U_')) return '';  // manual already has 👤 手动 badge
+  return '';  // D prefix = AI-generated, no extra badge needed
+}
+
 function render() {
   const pc = {core:'bg-gr', important:'bg-a', supplementary:'bg-gy'};
   const pl = {core:'核心', important:'重要', supplementary:'补充'};
 
   document.getElementById('dimGrid').innerHTML = dims.map(d => {
     return `<div class="dc ${d.ok?'confirmed':''}">
-      <div class="dc-hd"><div class="dc-nm">${d.nm}</div><span class="badge ${pc[d.pri]||'bg-gy'}">${pl[d.pri]||'补充'}</span>${d.manual ? '<span class="badge bg-gy">👤 手动</span>' : ''}</div>
+      <div class="dc-hd"><div class="dc-nm">${d.nm}</div>${sourceBadge(d)}<span class="badge ${pc[d.pri]||'bg-gy'}">${pl[d.pri]||'补充'}</span>${d.manual ? '<span class="badge bg-gy">👤 手动</span>' : ''}</div>
       <div class="dc-df">${d.df}</div>
       ${renderSources(d.sources)}
       <div class="dc-ft">
