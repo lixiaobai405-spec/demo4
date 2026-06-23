@@ -20,6 +20,9 @@ from backend.ai_service import (
     regenerate_item,
     generate_with_audit,
     LLMError,
+    STEP2_GUIDANCE,
+    STEP3_GUIDANCE,
+    STEP4_GUIDANCE,
 )
 from backend.auth_db import init_auth_db
 from backend.auth_service import AuthError, login_user, register_user
@@ -169,7 +172,7 @@ def api_generate_dimensions():
             data["company_info"], data.get("level", "中层管理者"),
             max_total_retries=2,
         )
-        return jsonify({"result": result, "audit": report})
+        return jsonify({"result": result, "audit": report, "step_guidance": STEP2_GUIDANCE})
     except LLMError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
@@ -191,7 +194,7 @@ def api_generate_descriptions():
             data.get("level", "中层管理者"),
             max_total_retries=2,
         )
-        return jsonify({"result": result, "audit": report})
+        return jsonify({"result": result, "audit": report, "step_guidance": STEP3_GUIDANCE})
     except LLMError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
@@ -213,7 +216,7 @@ def api_generate_anchors():
             data.get("level", "中层管理者"),
             max_total_retries=2,
         )
-        return jsonify({"result": result, "audit": report})
+        return jsonify({"result": result, "audit": report, "step_guidance": STEP4_GUIDANCE})
     except LLMError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
