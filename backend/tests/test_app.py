@@ -220,6 +220,27 @@ def test_generate_anchors_requires_dimensions(client):
     assert resp.status_code == 400
 
 
+def test_generate_anchors_falls_back_when_llm_fails(client, monkeypatch):
+    """Step4 的 LLM 调用不可用时应返回可编辑的后端兜底结果，而不是 500。"""
+    from backend.ai_service import LLMError
+
+    def fake_generate(*args, **kwargs):
+        raise LLMError("llm unavailable")
+
+    monkeypatch.setattr("backend.app.generate_anchors", fake_generate)
+
+    resp = client.post("/api/generate-anchors", json={
+        "dimensions": [{"id": "D1", "name": "战略拆解"}],
+        "critical_incidents": "正向事件：经理拆解目标并复盘结果。反向事件：延期后才协调，导致返工。",
+    })
+
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["fallback_reason"] == "llm unavailable"
+    assert len(data["result"]) == 1
+    assert len(data["result"][0]["bars5"]) == 5
+
+
 def test_analyze_doc_requires_file(client):
     """POST /api/analyze-doc 没有文件返回 400"""
     resp = client.post("/api/analyze-doc")

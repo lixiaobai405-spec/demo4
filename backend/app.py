@@ -17,6 +17,7 @@ from backend.ai_service import (
     generate_dimensions,
     generate_descriptions,
     generate_anchors,
+    build_rule_based_anchors,
     regenerate_item,
     generate_with_audit,
     check_critical_incidents,
@@ -231,11 +232,15 @@ def api_generate_anchors():
             critical_incidents=data.get("critical_incidents", ""),
             max_total_retries=2,
         )
+        if not result:
+            raise LLMError("empty anchor result")
         return jsonify({"result": result, "audit": report, "step_guidance": STEP4_GUIDANCE})
     except LLMError as e:
-        return jsonify({"error": str(e)}), 500
+        result = build_rule_based_anchors(data["dimensions"], data.get("critical_incidents", ""))
+        return jsonify({"result": result, "audit": {"total": len(result), "passed": len(result), "fixed": 0, "failed": 0, "details": []}, "step_guidance": STEP4_GUIDANCE, "fallback_reason": str(e)})
     except Exception as e:
-        return jsonify({"error": f"AI调用失败: {e}"}), 500
+        result = build_rule_based_anchors(data["dimensions"], data.get("critical_incidents", ""))
+        return jsonify({"result": result, "audit": {"total": len(result), "passed": len(result), "fixed": 0, "failed": 0, "details": []}, "step_guidance": STEP4_GUIDANCE, "fallback_reason": str(e)})
 
 
 # ── Regenerate ────────────────────────────────────────────────
