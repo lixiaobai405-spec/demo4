@@ -6,21 +6,20 @@
 <title>维度确认 - 领导力建模智能体</title>
 <link rel="stylesheet" href="style.css">
 <style>
-.dim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.dim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
 .dc { background: var(--sf); border-radius: 12px; border: 1.5px solid var(--br); box-shadow: var(--sh); overflow: hidden; transition: all .2s; }
 .dc:hover { box-shadow: var(--shh); }
 .dc.confirmed { border-color: var(--gr); }
 .dc-hd { padding: 14px 15px 9px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .dc-nm { font-size: 14.5px; font-weight: 600; color: var(--t1); }
 .dc-df { padding: 0 15px 11px; font-size: 13px; color: var(--t2); line-height: 1.6; }
-.dc-src { padding: 0 15px 11px; display: flex; flex-wrap: wrap; gap: 5px; }
+.dc-src { padding: 0 15px 12px; display: flex; flex-direction: column; gap: 6px; }
+.src-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .src-tag { font-size: 10.5px; padding: 2px 8px; border-radius: 100px; display: inline-flex; align-items: center; gap: 3px; }
 .src-stg { background: #E1EEF9; color: #1E5080; }
 .src-fwk { background: #FFF0E5; color: #A05510; }
 .src-int { background: #E1F5EE; color: #0F6E56; }
-.priority-judge { margin: 0 15px 11px; padding: 8px 10px; border-radius: 8px; background: #F8F5FA; border: 1px solid #E7DDEB; color: var(--t2); font-size: 11.5px; line-height: 1.55; }
-.priority-judge b { color: var(--t1); font-weight: 600; }
-.priority-judge .pj-sub { color: var(--t3); margin-top: 2px; }
+.src-detail { font-size: 11.5px; color: var(--t3); line-height: 1.45; }
 .dc-ft { padding: 9px 15px; border-top: 1px solid var(--br); display: flex; gap: 7px; background: var(--sf2); }
 .dc.confirmed .dc-ft { background: var(--grbg); }
 .alt-pool { margin-top: 22px; background: var(--sf); border-radius: 12px; border: 1px solid var(--br); padding: 16px 18px; box-shadow: var(--sh); }
@@ -28,7 +27,7 @@
 .alt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .alt-chip { padding: 6px 13px; border-radius: 100px; border: 1.5px dashed var(--brk); font-size: 13px; cursor: pointer; color: var(--t2); background: var(--sf); transition: all .15s; }
 .alt-chip:hover { border-color: var(--p); color: var(--p); background: var(--p10); }
-.gen-area { text-align: center; padding: 30px; }
+.modal-note { font-size: 12px; color: var(--t3); line-height: 1.6; background: var(--sf2); border: 1px solid var(--br); border-radius: 8px; padding: 9px 10px; margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -48,23 +47,22 @@
   <span class="step-bar-label">步骤 2 / 5</span>
 </div>
 
-
 <div class="main">
   <div class="lcard">
     <b>维度生成与确认（M02）— 第一次人机交接</b>
-    <p>AI 已基于企业背景生成维度框架，请逐一确认、修改或删除。至少确认 3 个维度才能进入下一步。</p>
+    <p>最终基准：AI 必须根据采集信息、上传文档和知识库输出 6–8 个维度，客户至少选择 6 个。此阶段只做维度确认，不做排序解释。</p>
   </div>
 
   <div id="loadingArea" class="ldg">
     <div style="font-size:32px;margin-bottom:8px">✨</div>
     <div class="ldots"><span></span><span></span><span></span></div>
-    <div style="font-size:13.5px;margin-top:4px">AI 正在生成领导力维度…</div>
+    <div style="font-size:13.5px;margin-top:4px">AI 正在综合企业信息与知识库生成领导力维度…</div>
   </div>
 
   <div id="contentArea" class="hidden">
     <div class="sec-row">
       <div><div class="sec-t">领导力维度框架</div>
-      <div class="sec-s" id="okCount">已确认 <strong style="color:var(--gr)">0</strong> / 0 个 · 至少需要 3 个</div></div>
+      <div class="sec-s" id="okCount">已确认 <strong style="color:var(--gr)">0</strong> / 0 个 · 至少需要 6 个</div></div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-o btn-sm" onclick="confirmAll()">全部确认</button>
         <button class="btn btn-a btn-sm" onclick="openAdd()">＋ 手动添加</button>
@@ -87,15 +85,9 @@
 <div class="modal-bg" id="editModal">
   <div class="modal-box">
     <div class="modal-hd"><span id="modalTitle">编辑维度</span><button class="modal-x" onclick="closeModal()">×</button></div>
-    <div class="ff"><label>维度名称 *</label><input id="editName" type="text" placeholder="2-5字，如：团队管理"></div>
+    <div class="modal-note">来源由系统判定，只允许三类：战略文档关键词 / 标准库映射 / 对话归纳。手动添加默认来源为「对话归纳」。</div>
+    <div class="ff"><label>维度名称 *</label><input id="editName" type="text" placeholder="如：团队管理"></div>
     <div class="ff"><label>定义说明 *（2-3句话）</label><textarea id="editDef" rows="3" placeholder="描述该维度的核心行为要求"></textarea></div>
-    <div class="ff"><label>优先级</label>
-      <select id="editPri">
-        <option value="core">核心 (core)</option>
-        <option value="important" selected>重要 (important)</option>
-        <option value="supplementary">补充 (supplementary)</option>
-      </select>
-    </div>
     <div class="modal-ft"><button class="btn btn-o btn-sm" onclick="closeModal()">取消</button><button class="btn btn-p btn-sm" id="saveEditBtn" onclick="saveEdit()">保存</button></div>
   </div>
 </div>
@@ -104,286 +96,64 @@
 
 <script>
 const API = '/api';
+const MIN_SELECTED = 6;
 const MOCK_DIMS = [
-  {id:'D1',nm:'战略引领',df:'理解并转化公司战略，将目标拆解为团队可执行的阶段工作计划，在组织变化中保持方向感与凝聚力。',pri:'core',ok:false},
-  {id:'D2',nm:'团队赋能',df:'识别成员能力差距，通过辅导、授权和持续反馈激发个体潜力，构建高效协作的学习型团队。',pri:'core',ok:false},
-  {id:'D3',nm:'跨部门协作',df:'主动建立跨团队合作关系，有效协调多方资源与利益诉求，推动跨部门重要项目有效落地。',pri:'core',ok:false},
-  {id:'D4',nm:'执行与交付',df:'将计划转化为具体行动，合理配置资源，持续追踪关键节点，确保目标按时按质完成承诺。',pri:'important',ok:false},
-  {id:'D5',nm:'沟通影响力',df:'根据不同对象调整表达策略，清晰传递信息，有效影响他人行动，建立可信赖的合作关系。',pri:'important',ok:false},
+  {id:'LN-001',nm:'战略拆解',df:'将公司战略目标转化为团队可执行计划，设定里程碑和衡量指标，定期复盘进展并调整资源配置。',source_type:'标准库映射',source_detail:'LN-001 战略拆解与落地',framework_dimension:'战略拆解与落地',framework_name:'Hay Group 领导力素质模型',ok:false},
+  {id:'LN-009',nm:'团队赋能',df:'识别成员能力差距和发展潜力，通过教练式辅导、授权和项目历练推动团队成员成长。',source_type:'标准库映射',source_detail:'LN-009 团队赋能',framework_dimension:'团队赋能',framework_name:'Google Project Oxygen',ok:false},
+  {id:'LN-023',nm:'跨部门协作',df:'识别跨部门协作节点和依赖关系，建立同步机制，在资源冲突时推动多方达成共识。',source_type:'标准库映射',source_detail:'LN-023 跨部门协作',framework_dimension:'跨部门协作',framework_name:'Lateral Leadership',ok:false},
+  {id:'LN-017',nm:'目标导向执行',df:'将模糊方向转化为清晰行动方案，设定时间节点和交付标准，持续追踪关键里程碑。',source_type:'标准库映射',source_detail:'LN-017 目标导向执行',framework_dimension:'目标导向执行',framework_name:'OKR',ok:false},
+  {id:'LN-024',nm:'沟通影响力',df:'根据对象和场景调整表达策略，向上聚焦结论风险，横向强调共同利益，向下拆解行动要求。',source_type:'标准库映射',source_detail:'LN-024 沟通影响力',framework_dimension:'沟通影响力',framework_name:'Harvard Business School',ok:false},
+  {id:'LN-020',nm:'数据决策',df:'建立关键业务指标体系，用数据验证管理假设，将数据洞察转化为可操作的业务行动。',source_type:'标准库映射',source_detail:'LN-020 数据决策',framework_dimension:'数据决策',framework_name:'DDDM',ok:false},
 ];
 const MOCK_ALTS = [
-  {id:'D6',nm:'变革管理',df:'引领组织变革，帮助团队在不确定环境中保持积极心态。',pri:'supplementary',added:false},
-  {id:'D7',nm:'客户导向',df:'深刻理解客户需求，在决策中优先考虑客户视角。',pri:'supplementary',added:false},
-  {id:'D8',nm:'数据决策',df:'基于数据分析洞察业务趋势，做出科学合理的管理决策。',pri:'supplementary',added:false},
+  {id:'LN-003',nm:'变革引领',df:'识别组织变革需求，制定变革路径图，化解变革阻力，带领团队在不确定性中保持方向。',source_type:'标准库映射',source_detail:'LN-003 变革引领',framework_dimension:'变革引领',framework_name:'Kotter 变革领导力模型',added:false},
+  {id:'LN-016',nm:'团队管理',df:'合理配置团队角色与任务，建立工作机制和沟通节奏，平衡交付要求与成员发展需求。',source_type:'标准库映射',source_detail:'LN-016 团队管理',framework_dimension:'团队管理',framework_name:'Tuckman 团队发展阶段模型',added:false},
+  {id:'LN-008',nm:'客户导向',df:'理解客户需求与痛点，将客户反馈转化为产品和服务改进，建立以客户价值为中心的团队习惯。',source_type:'标准库映射',source_detail:'LN-008 客户导向',framework_dimension:'客户导向',framework_name:'Amazon Leadership Principles',added:false},
 ];
 
 let dims = [];
 let alts = [...MOCK_ALTS];
 let editId = null;
-const PRIORITY_FORMULA_TEXT = '战略相关性35% + 证据强度25% + 层级关键性25% + 发展杠杆15%';
-const PRIORITY_LABEL_TEXT = {core:'核心', important:'重要', supplementary:'补充'};
-const PRIORITY_FALLBACK = {
-  core: { score: 4.6, components: { strategic_relevance: 5, evidence_strength: 4, role_criticality: 5, development_leverage: 4 } },
-  important: { score: 3.55, components: { strategic_relevance: 4, evidence_strength: 3, role_criticality: 4, development_leverage: 3 } },
-  supplementary: { score: 2.25, components: { strategic_relevance: 2, evidence_strength: 2, role_criticality: 3, development_leverage: 2 } },
-};
-
-// Load from localStorage or generate
-const saved = localStorage.getItem('lm_dims');
-if (saved) {
-  try { dims = JSON.parse(saved); } catch(e) {}
-}
+const saved = localStorage.getItem('lm_dims_all');
+if (saved) { try { dims = JSON.parse(saved); } catch(e) {} }
 
 async function init() {
-  if (dims.length > 0) {
-    showContent();
-    return;
-  }
-
-  // Try to generate via AI
+  if (dims.length > 0) { showContent(); return; }
   const companyInfo = localStorage.getItem('lm_company_info');
-  if (!companyInfo) {
-    // Fallback to mock
-    dims = MOCK_DIMS.map(d => ({...d, ok: false}));
-    showContent();
-    return;
-  }
-
+  if (!companyInfo) { dims = MOCK_DIMS.map(d => ({...d, ok:false})); showContent(); return; }
   try {
     const level = JSON.parse(companyInfo)['建模层级'] || '中层管理者';
-    const resp = await fetch(`${API}/generate-dimensions`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ company_info: companyInfo, level })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-
-    // 新 API 返回结构化 dict: {recommended: [...], alternatives: [...]}
-    const parsed = data.result;
-    const recommended = parsed.recommended || [];
-    const alternatives = parsed.alternatives || [];
-
-    dims = recommended.map(d => ({
-      id: d.id,
-      nm: d.name,
-      df: d.definition,
-      pri: d.priority || 'important',
-      rationale: d.rationale || '',
-      sources: d.sources || {},
-      pj: normalizePriorityJudgment(d.priority_judgment || d.priority_reasoning || d.pj, d.priority || 'important', d.rationale || ''),
-      ok: false
-    }));
-
-    // 备选维度加入备选池
-    alts = [
-      ...alternatives.map((d, i) => ({
-        id: d.id || `DA${i+1}`,
-        nm: d.name,
-        df: d.definition,
-        pri: d.priority || 'supplementary',
-        rationale: d.rationale || '',
-        sources: d.sources || {},
-        pj: normalizePriorityJudgment(d.priority_judgment || d.priority_reasoning || d.pj, d.priority || 'supplementary', d.rationale || ''),
-        added: false
-      })),
-      ...MOCK_ALTS
-    ];
-
-    if (dims.length === 0) dims = MOCK_DIMS.map(d => ({...d, ok: false}));
+    const resp = await fetch(`${API}/generate-dimensions`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ company_info: companyInfo, level }) });
+    const data = await resp.json(); if (data.error) throw new Error(data.error);
+    const parsed = data.result || {};
+    dims = (parsed.recommended || []).map(normalizeDim).slice(0,8);
+    alts = [...(parsed.alternatives || []).map(normalizeAlt), ...MOCK_ALTS];
+    if (dims.length < 6) dims = MOCK_DIMS.map(d => ({...d, ok:false}));
   } catch (err) {
-    console.error('AI generation failed, using mock:', err);
-    dims = MOCK_DIMS.map(d => ({...d, ok: false}));
+    console.error('dimension generation failed:', err);
+    dims = MOCK_DIMS.map(d => ({...d, ok:false}));
   }
   showContent();
 }
-
-function showContent() {
-  document.getElementById('loadingArea').classList.add('hidden');
-  document.getElementById('contentArea').classList.remove('hidden');
-  render();
-}
-
-function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function priorityJudgmentForLabel(pri, rationale) {
-  const label = pri || 'important';
-  const fallback = PRIORITY_FALLBACK[label] || PRIORITY_FALLBACK.important;
-  return {
-    score: fallback.score,
-    label,
-    formula: PRIORITY_FORMULA_TEXT,
-    components: {...fallback.components},
-    rationale: rationale || '系统根据当前优先级标签生成兜底公式化判断。',
-    source: 'frontend'
-  };
-}
-
-function normalizePriorityJudgment(raw, pri, rationale) {
-  if (!raw) return priorityJudgmentForLabel(pri, rationale);
-  const fallback = priorityJudgmentForLabel(raw.label || pri, rationale);
-  const components = raw.components || {};
-  return {
-    score: Number.isFinite(Number(raw.score)) ? Number(raw.score) : fallback.score,
-    label: raw.label || pri || fallback.label,
-    formula: raw.formula || PRIORITY_FORMULA_TEXT,
-    components: {
-      strategic_relevance: components.strategic_relevance || fallback.components.strategic_relevance,
-      evidence_strength: components.evidence_strength || fallback.components.evidence_strength,
-      role_criticality: components.role_criticality || fallback.components.role_criticality,
-      development_leverage: components.development_leverage || fallback.components.development_leverage,
-    },
-    rationale: raw.rationale || rationale || fallback.rationale,
-    source: raw.source || fallback.source
-  };
-}
-
-function renderPriorityJudgment(d) {
-  const pj = normalizePriorityJudgment(d.pj || d.priority_judgment, d.pri, d.rationale);
-  d.pj = pj;
-  const c = pj.components || {};
-  const score = Number.isFinite(Number(pj.score)) ? Number(pj.score).toFixed(2).replace(/\.?0+$/, '') : '--';
-  const componentText = `战略${c.strategic_relevance || '-'} · 证据${c.evidence_strength || '-'} · 层级${c.role_criticality || '-'} · 发展${c.development_leverage || '-'}`;
-  return `<div class="priority-judge">
-    <div><b>优先级判断：</b>${PRIORITY_LABEL_TEXT[pj.label] || '重要'}（${score}/5）</div>
-    <div class="pj-sub">公式：${escHtml(pj.formula || PRIORITY_FORMULA_TEXT)}</div>
-    <div class="pj-sub">分项：${componentText}</div>
-    <div class="pj-sub">理由：${escHtml(pj.rationale || '基于已收集信息由 AI 自主判断')}</div>
-  </div>`;
-}
-
-function renderSources(sources) {
-  if (!sources) return '';
-  const tags = [];
-  if (sources.strategy) tags.push(`<span class="src-tag src-stg">🔵 ${escHtml(sources.strategy)}</span>`);
-  if (sources.framework) tags.push(`<span class="src-tag src-fwk">🟠 ${escHtml(sources.framework)}</span>`);
-  if (sources.interview) tags.push(`<span class="src-tag src-int">🟢 ${escHtml(sources.interview)}</span>`);
-  return tags.length ? `<div class="dc-src">${tags.join('')}</div>` : '';
-}
-
-function sourceBadge(d) {
-  if (d.id && d.id.startsWith('LN-')) return '<span class="badge bg-a">📚 标准库</span>';
-  if (d.id && d.id.startsWith('U_')) return '';  // manual already has 👤 手动 badge
-  return '';  // D prefix = AI-generated, no extra badge needed
-}
-
-function render() {
-  const pc = {core:'bg-gr', important:'bg-a', supplementary:'bg-gy'};
-  const pl = {core:'核心', important:'重要', supplementary:'补充'};
-
-  document.getElementById('dimGrid').innerHTML = dims.map(d => {
-    return `<div class="dc ${d.ok?'confirmed':''}">
-      <div class="dc-hd"><div class="dc-nm">${d.nm}</div>${sourceBadge(d)}<span class="badge ${pc[d.pri]||'bg-gy'}">${pl[d.pri]||'补充'}</span>${d.manual ? '<span class="badge bg-gy">👤 手动</span>' : ''}</div>
-      <div class="dc-df">${d.df}</div>
-      ${renderSources(d.sources)}
-      ${renderPriorityJudgment(d)}
-      <div class="dc-ft">
-        <button class="btn btn-sm ${d.ok?'btn-o':'btn-p'}" style="${d.ok?'background:var(--gr);color:#fff;border-color:var(--gr)':''}" onclick="toggleOk('${d.id}')">${d.ok?'✓ 已确认':'确认'}</button>
-        <button class="btn btn-g btn-sm" onclick="openEdit('${d.id}')">编辑</button>
-        <button class="btn btn-d btn-sm" onclick="delDim('${d.id}')">删除</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('altChips').innerHTML = alts.filter(a => !a.added).map(a =>
-    `<div class="alt-chip" onclick="addAlt('${a.id}')" title="${a.df}">+ ${a.nm}</div>`
-  ).join('');
-
-  const ok = dims.filter(d => d.ok).length;
-  document.getElementById('okCount').innerHTML = `已确认 <strong style="color:var(--gr)">${ok}</strong> / ${dims.length} 个${ok>=3?' · ✓ 可进入下一步':' · 还需 '+(3-ok)+' 个'}`;
-  document.getElementById('nextBtn').disabled = ok < 3;
-}
-
-function toggleOk(id) { const d = dims.find(x => x.id === id); if (d) { d.ok = !d.ok; } render(); }
-function delDim(id) { dims = dims.filter(x => x.id !== id); render(); }
-function confirmAll() { dims.forEach(d => d.ok = true); render(); }
-function addAlt(id) {
-  const a = alts.find(x => x.id === id);
-  if (a) { a.added = true; dims.push({...a, ok: true}); }
-  render();
-}
-function openEdit(id) {
-  const d = dims.find(x => x.id === id); if (!d) return;
-  editId = id;
-  document.getElementById('modalTitle').textContent = '编辑维度';
-  document.getElementById('editName').value = d.nm;
-  document.getElementById('editDef').value = d.df;
-  document.getElementById('editPri').value = d.pri || 'important';
-  document.getElementById('saveEditBtn').disabled = false;
-  document.getElementById('editModal').classList.add('show');
-}
-function closeModal() {
-  document.getElementById('editModal').classList.remove('show');
-  editId = null;
-}
-function openAdd() {
-  editId = '__new__';
-  document.getElementById('modalTitle').textContent = '手动添加维度';
-  document.getElementById('editName').value = '';
-  document.getElementById('editDef').value = '';
-  document.getElementById('editPri').value = 'important';
-  document.getElementById('saveEditBtn').disabled = true;
-  document.getElementById('editModal').classList.add('show');
-  // 监听名称输入，空值时禁用保存
-  document.getElementById('editName').oninput = function() {
-    document.getElementById('saveEditBtn').disabled = !this.value.trim();
-  };
-}
-function saveEdit() {
-  const name = document.getElementById('editName').value.trim();
-  if (!name) return;
-
-  const def = document.getElementById('editDef').value.trim();
-  const pri = document.getElementById('editPri').value;
-
-  if (editId === '__new__') {
-    // 重名检测
-    if (dims.some(d => d.nm === name)) {
-      if (!confirm(`已存在同名维度「${name}」，是否继续添加？`)) {
-        closeModal();
-        return;
-      }
-    }
-    dims.push({
-      id: 'U_' + Date.now().toString(36),
-      nm: name,
-      df: def,
-      pri: pri,
-      rationale: '',
-      sources: { interview: '用户手动添加' },
-      pj: priorityJudgmentForLabel(pri, '用户手动添加，默认按所选优先级进入后续建模。'),
-      ok: true,
-      manual: true
-    });
-  } else {
-    const d = dims.find(x => x.id === editId);
-    if (d) {
-      const oldPri = d.pri || 'important';
-      d.nm = name;
-      d.df = def;
-      d.pri = pri;
-      if (oldPri !== pri || !d.pj) {
-        d.pj = priorityJudgmentForLabel(pri, '用户手动调整优先级后，系统按固定公式重新生成判断。');
-      }
-    }
-  }
-  // 同步 localStorage
-  localStorage.setItem('lm_dims', JSON.stringify(dims.filter(d => d.ok)));
-  closeModal();
-  render();
-}
-function goNext() {
-  const confirmed = dims.filter(d => d.ok);
-  localStorage.setItem('lm_dims', JSON.stringify(confirmed));
-  window.location.href = 'step3.html';
-}
-
-function showToast(msg, err) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
-}
-
+function normalizeDim(d) { return { id:d.id || ('D_'+Date.now().toString(36)), nm:d.name || d.nm || '未命名维度', df:d.definition || d.df || '', source_type:d.source_type || d.sources?.type || inferSourceType(d), source_detail:d.source_detail || d.sources?.detail || d.rationale || '系统生成', framework_dimension:d.framework_dimension || '', framework_name:d.framework_name || d.sources?.framework || '', sources:d.sources || {}, rationale:d.rationale || '', ok:Boolean(d.ok) }; }
+function normalizeAlt(d) { return {...normalizeDim(d), added:Boolean(d.added)}; }
+function inferSourceType(d) { if ((d.id || '').startsWith('LN-') || d.sources?.framework) return '标准库映射'; if (d.sources?.strategy) return '战略文档关键词'; return '对话归纳'; }
+function escHtml(s) { const div = document.createElement('div'); div.textContent = s || ''; return div.innerHTML; }
+function sourceClass(type) { return type === '战略文档关键词' ? 'src-stg' : (type === '标准库映射' ? 'src-fwk' : 'src-int'); }
+function sourceIcon(type) { return type === '战略文档关键词' ? '🔵' : (type === '标准库映射' ? '🟠' : '🟢'); }
+function renderSources(d) { const type = d.source_type || '对话归纳'; const details = []; if (d.source_detail) details.push(escHtml(d.source_detail)); if (type === '标准库映射') { if (d.framework_dimension) details.push(`映射维度：${escHtml(d.framework_dimension)}`); if (d.framework_name) details.push(`引用模型：${escHtml(d.framework_name)}`); } return `<div class="dc-src"><div class="src-row"><span class="src-tag ${sourceClass(type)}">${sourceIcon(type)} ${type}</span></div><div class="src-detail">${details.join(' · ') || '系统归纳'}</div></div>`; }
+function showContent() { document.getElementById('loadingArea').classList.add('hidden'); document.getElementById('contentArea').classList.remove('hidden'); render(); }
+function render() { document.getElementById('dimGrid').innerHTML = dims.map(d => `<div class="dc ${d.ok?'confirmed':''}"><div class="dc-hd"><div class="dc-nm">${escHtml(d.nm)}</div>${d.manual ? '<span class="badge bg-gy">👤 手动</span>' : ''}</div><div class="dc-df">${escHtml(d.df)}</div>${renderSources(d)}<div class="dc-ft"><button class="btn btn-sm ${d.ok?'btn-o':'btn-p'}" style="${d.ok?'background:var(--gr);color:#fff;border-color:var(--gr)':''}" onclick="toggleOk('${d.id}')">${d.ok?'✓ 已确认':'确认'}</button><button class="btn btn-g btn-sm" onclick="openEdit('${d.id}')">编辑</button><button class="btn btn-d btn-sm" onclick="delDim('${d.id}')">删除</button></div></div>`).join(''); document.getElementById('altChips').innerHTML = alts.filter(a => !a.added).map(a => `<div class="alt-chip" onclick="addAlt('${a.id}')" title="${escHtml(a.df)}">+ ${escHtml(a.nm)}</div>`).join(''); const ok = dims.filter(d => d.ok).length; document.getElementById('okCount').innerHTML = `已确认 <strong style="color:var(--gr)">${ok}</strong> / ${dims.length} 个${ok>=MIN_SELECTED?' · ✓ 可进入下一步':' · 还需 '+(MIN_SELECTED-ok)+' 个'}`; document.getElementById('nextBtn').disabled = ok < MIN_SELECTED; localStorage.setItem('lm_dims_all', JSON.stringify(dims)); }
+function toggleOk(id){const d=dims.find(x=>x.id===id); if(d)d.ok=!d.ok; render();}
+function delDim(id){dims=dims.filter(x=>x.id!==id); render();}
+function confirmAll(){dims.forEach(d=>d.ok=true); render();}
+function addAlt(id){const a=alts.find(x=>x.id===id); if(a){a.added=true; dims.push({...a, ok:true});} render();}
+function openEdit(id){const d=dims.find(x=>x.id===id); if(!d)return; editId=id; document.getElementById('modalTitle').textContent='编辑维度'; document.getElementById('editName').value=d.nm; document.getElementById('editDef').value=d.df; document.getElementById('saveEditBtn').disabled=false; document.getElementById('editModal').classList.add('show');}
+function openAdd(){editId='__new__'; document.getElementById('modalTitle').textContent='手动添加维度'; document.getElementById('editName').value=''; document.getElementById('editDef').value=''; document.getElementById('saveEditBtn').disabled=true; document.getElementById('editModal').classList.add('show'); document.getElementById('editName').oninput=function(){document.getElementById('saveEditBtn').disabled=!this.value.trim();};}
+function closeModal(){document.getElementById('editModal').classList.remove('show'); editId=null;}
+function saveEdit(){const name=document.getElementById('editName').value.trim(); if(!name)return; const def=document.getElementById('editDef').value.trim(); if(editId==='__new__'){dims.push({id:'U_'+Date.now().toString(36), nm:name, df:def, source_type:'对话归纳', source_detail:'用户手动添加', framework_dimension:'', framework_name:'', sources:{type:'对话归纳', detail:'用户手动添加'}, ok:true, manual:true});} else {const d=dims.find(x=>x.id===editId); if(d){d.nm=name; d.df=def;}} closeModal(); render();}
+function goNext(){const confirmed=dims.filter(d=>d.ok); localStorage.setItem('lm_dims', JSON.stringify(confirmed)); localStorage.setItem('lm_dims_all', JSON.stringify(dims)); window.location.href='step3.html';}
+function showToast(msg, err){const t=document.getElementById('toast'); t.textContent=msg; t.style.background=err?'#991B1B':'#1A1520'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800);}
 init();
 </script>
 </body>

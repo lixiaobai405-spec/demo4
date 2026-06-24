@@ -11,18 +11,17 @@
 .di-hd { padding: 13px 16px 10px; display: flex; align-items: center; gap: 10px; }
 .di-nm { font-size: 14px; font-weight: 600; flex: 1; color: var(--t1); display: flex; align-items: center; gap: 8px; }
 .di-nm::before { content: ""; width: 3px; height: 16px; border-radius: 2px; background: var(--p); flex-shrink: 0; }
-.di-txt { padding: 0 16px 12px; font-size: 13.5px; color: var(--t1); line-height: 1.75; cursor: text; }
-.di-txt:hover { background: var(--sf2); }
+.di-txt { padding: 0 16px 12px; font-size: 13.5px; color: var(--t1); line-height: 1.75; }
 .di-issue { padding: 8px 16px; font-size: 12.5px; background: #FFFBEB; border-top: 1px solid #FDE68A; color: #92400E; }
 .di-ft { padding: 9px 16px; border-top: 1px solid var(--br); display: flex; gap: 8px; background: var(--sf2); }
-.di-ea { padding: 0 16px 12px; }
-.di-ea textarea { width: 100%; border: 1.5px solid var(--br); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; font-family: inherit; resize: vertical; min-height: 72px; outline: none; line-height: 1.7; color: var(--t1); }
-.di-ea textarea:focus { border-color: var(--p); box-shadow: 0 0 0 3px var(--p10); }
 .regen-row { padding: 0 16px 12px; display: flex; gap: 8px; }
 .regen-row input { flex: 1; border: 1.5px solid var(--br); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; color: var(--t1); }
 .regen-row input:focus { border-color: var(--a); box-shadow: 0 0 0 3px var(--a10); }
 .regen-btn { background: var(--a); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
 .regen-btn:hover { background: var(--a60); }
+.term-card { background: var(--sf); border: 1px solid var(--br); border-radius: 12px; box-shadow: var(--sh); padding: 14px 16px; margin-bottom: 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.term-card p { font-size: 12.5px; color: var(--t2); line-height: 1.6; }
+.term-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; background:var(--p10); color:var(--p80); font-size:12px; margin:3px 4px 0 0; }
 </style>
 </head>
 <body>
@@ -37,183 +36,50 @@
     <a class="ps" href="step5.html"><div class="pd pending">5</div><span class="pl">总览导出</span></a>
   </nav>
 </header>
-<div class="step-bar">
-  <div class="step-bar-track"><div class="step-bar-fill" style="width:60%"></div></div>
-  <span class="step-bar-label">步骤 3 / 5</span>
-</div>
-
+<div class="step-bar"><div class="step-bar-track"><div class="step-bar-fill" style="width:60%"></div></div><span class="step-bar-label">步骤 3 / 5</span></div>
 
 <div class="main">
-  <div class="lcard">
-    <b>维度描述建立（M03）— 第二次人机交接</b>
-    <p>AI 已为每个维度生成针对中层管理者的定位描述。⚠️ 标识含质检提示，点击描述文字可直接编辑，或指定方向重新生成。</p>
-  </div>
-
-  <div id="loadingArea" class="ldg">
-    <div style="font-size:32px;margin-bottom:8px">✨</div>
-    <div class="ldots"><span></span><span></span><span></span></div>
-    <div style="font-size:13.5px;margin-top:4px">AI 正在生成维度定位描述…</div>
-  </div>
-
-  <div id="contentArea" class="hidden">
-    <div class="sec-row"><div class="sec-t">维度定位描述</div></div>
-    <div class="desc-list" id="descList"></div>
-  </div>
+  <div class="lcard"><b>维度描述建立（M03）— 第二次人机交接</b><p>点击【企业专有词汇】可录入组织内部关键词，系统会自动更新维度定位描述。点击【编辑】需填写修改方向，由 AI 润色生成，不直接手改正文。</p></div>
+  <div class="term-card"><div><b style="color:var(--p80);font-size:13px">企业专有词汇</b><p id="termPreview">尚未录入。可加入公司内部称谓、业务线名称、管理机制、文化关键词等。</p></div><button class="btn btn-a btn-sm" onclick="openTerms()">＋ 企业专有词汇</button></div>
+  <div id="loadingArea" class="ldg"><div style="font-size:32px;margin-bottom:8px">✨</div><div class="ldots"><span></span><span></span><span></span></div><div style="font-size:13.5px;margin-top:4px">AI 正在生成维度定位描述…</div></div>
+  <div id="contentArea" class="hidden"><div class="sec-row"><div class="sec-t">维度定位描述</div><div class="sec-s">仅展示需审阅问题；不再展示通过状态标签</div></div><div class="desc-list" id="descList"></div></div>
 </div>
 
-<footer class="ftr">
-  <a href="step2.html" class="btn btn-o">← 上一步</a>
-  <span class="step-info">步骤 3 / 5</span>
-  <button class="btn btn-p" id="nextBtn" onclick="goNext()">确认描述，生成行为锚定 →</button>
-</footer>
+<footer class="ftr"><a href="step2.html" class="btn btn-o">← 上一步</a><span class="step-info">步骤 3 / 5</span><button class="btn btn-p" id="nextBtn" onclick="goNext()">确认描述，进入关键事件采集 →</button></footer>
 
+<div class="modal-bg" id="termModal"><div class="modal-box"><div class="modal-hd"><span>企业专有词汇</span><button class="modal-x" onclick="closeTerms()">×</button></div><div class="ff"><label>词汇/短语（用逗号、顿号或换行分隔）</label><textarea id="termText" rows="5" placeholder="如：铁三角、区域战队、客户成功、项目战情会、复盘会"></textarea></div><div class="modal-ft"><button class="btn btn-o btn-sm" onclick="closeTerms()">取消</button><button class="btn btn-p btn-sm" onclick="saveTerms()">保存并更新描述</button></div></div></div>
 <div id="toast" class="toast"></div>
 
 <script>
 const API = '/api';
-const MOCK_DESCS = [
-  {id:'D1',nm:'战略引领',desc:'在中层管理者层级，战略引领体现在能够深度理解公司战略意图，将其转化为本部门年度目标和季度优先级，定期向团队解读战略背景，确保成员理解日常工作与战略的连接，保持执行方向不偏离。',qc:{ok:true,issues:[]}},
-  {id:'D2',nm:'团队赋能',desc:'聚焦团队成员的能力成长，通过定期 1on1 识别个人瓶颈，结合项目历练给予针对性辅导，在关键决策中有意识地授权，使成员在承担责任中快速成长，形成自我驱动的学习氛围。',qc:{ok:true,issues:[]}},
-  {id:'D3',nm:'跨部门协作',desc:'主动识别跨部门协作节点，建立定期同步机制，在资源冲突和利益分歧出现时介入斡旋，确保己方需求清晰传递，推动多方达成共识，减少因信息不对称带来的摩擦和延误。',qc:{ok:false,issues:['[空泛词汇] 「及时」建议改为可量化描述']}},
-  {id:'D4',nm:'执行与交付',desc:'将团队目标拆解至每位成员的具体任务，明确时间节点与交付标准，每周追踪关键里程碑，遇到执行偏差当天启动资源协调，确保承诺按期高质量完成。',qc:{ok:true,issues:[]}},
-  {id:'D5',nm:'沟通影响力',desc:'根据汇报对象灵活调整沟通策略：向上聚焦结论和风险，横向强调共同利益，向下重在拆解和激励，确保信息准确传递并被对方真正理解和采纳。',qc:{ok:true,issues:[]}},
-];
-
 let descs = [];
 let editStates = {};
-
+let enterpriseTerms = localStorage.getItem('lm_terms') || '';
 const savedDims = localStorage.getItem('lm_dims');
 const dims = savedDims ? JSON.parse(savedDims) : [];
 const savedDescs = localStorage.getItem('lm_descs');
-if (savedDescs) {
-  try { descs = JSON.parse(savedDescs); } catch(e) {}
-}
-
-async function init() {
-  if (descs.length > 0) { showContent(); return; }
-  if (dims.length === 0) { descs = MOCK_DESCS; showContent(); return; }
-
+if (savedDescs) { try { descs = JSON.parse(savedDescs); } catch(e) {} }
+function termList() { return enterpriseTerms.split(/[，,、\n]/).map(s => s.trim()).filter(Boolean); }
+function renderTermPreview() { const terms = termList(); const el = document.getElementById('termPreview'); if (!el) return; el.innerHTML = terms.length ? terms.map(t => `<span class="term-chip">${t}</span>`).join('') : '尚未录入。可加入公司内部称谓、业务线名称、管理机制、文化关键词等。'; }
+async function init() { renderTermPreview(); if (descs.length > 0) { showContent(); return; } if (dims.length === 0) { descs = []; showContent(); return; } await generateAllDescriptions(); }
+async function generateAllDescriptions() {
   const companyInfo = localStorage.getItem('lm_company_info') || '';
   const level = companyInfo ? (JSON.parse(companyInfo)['建模层级'] || '中层管理者') : '中层管理者';
-
-  try {
-    const resp = await fetch(`${API}/generate-descriptions`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ dimensions: dims, company_info: companyInfo, level })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-
-    const items = data.result; // 新API直接返回list
-    if (Array.isArray(items)) {
-      descs = items.map(d => ({
-        id: d.dimension_id,
-        nm: d.dimension_name,
-        desc: d.description,
-        qc: { ok: d.quality_check ? d.quality_check.passed !== false : true, issues: d.quality_check ? (d.quality_check.issues || []) : [] }
-      }));
-    } else {
-      // 兼容旧格式 (JSON字符串)
-      const jsonStr = (items || '').replace(/```json\n?|```/g, '').trim();
-      const parsed = JSON.parse(jsonStr);
-      descs = (parsed.descriptions || []).map(d => ({
-        id: d.dimension_id,
-        nm: d.dimension_name,
-        desc: d.description,
-        qc: { ok: d.qc_pass !== false, issues: d.qc_issues || [] }
-      }));
-    }
-    if (descs.length === 0) descs = MOCK_DESCS;
-  } catch (err) {
-    console.error('AI generation failed, using mock:', err);
-    // Map dimensions to mock descriptions
-    descs = dims.map(d => ({
-      id: d.id, nm: d.nm,
-      desc: `在中层管理者层级，「${d.nm}」要求管理者系统性展现相关能力，结合业务特点转化为可观察的具体行动和可衡量成果，并定期复盘持续优化。`,
-      qc: { ok: true, issues: [] }
-    }));
-    if (descs.length === 0) descs = MOCK_DESCS;
-  }
-  showContent();
+  document.getElementById('loadingArea').classList.remove('hidden'); document.getElementById('contentArea').classList.add('hidden');
+  try { const resp = await fetch(`${API}/generate-descriptions`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dimensions:dims, company_info:companyInfo, level, enterprise_terms:enterpriseTerms }) }); const data = await resp.json(); if (data.error) throw new Error(data.error); descs = (Array.isArray(data.result) ? data.result : []).map(d => ({ id:d.dimension_id, nm:d.dimension_name, desc:d.description, qc:{ok:d.quality_check ? d.quality_check.passed !== false : true, issues:d.quality_check ? (d.quality_check.issues || []) : []} })); }
+  catch(err) { console.error(err); descs = dims.map(d => ({ id:d.id, nm:d.nm, desc:`围绕「${d.nm}」，管理者需要将该要求转化为团队可观察的工作动作，结合企业业务场景明确沟通、推进、复盘和改进方式，使该维度成为日常管理语言的一部分。`, qc:{ok:true,issues:[]} })); }
+  localStorage.setItem('lm_descs', JSON.stringify(descs)); showContent();
 }
-
-function showContent() {
-  document.getElementById('loadingArea').classList.add('hidden');
-  document.getElementById('contentArea').classList.remove('hidden');
-  render();
-}
-
-function render() {
-  document.getElementById('descList').innerHTML = descs.map(d => {
-    const ok = d.qc.ok && !d.qc.issues.length;
-    const es = editStates[d.id] || {};
-    return `<div class="di">
-      <div class="di-hd">
-        <div class="di-nm">${d.nm}</div>
-        <span class="badge ${ok?'bg-gr':'bg-am'}">${ok?'✅ 质检通过':'⚠️ 建议审阅'}</span>
-      </div>
-      ${es.editing ? `<div class="di-ea"><textarea id="ta_${d.id}">${d.desc}</textarea>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-p btn-sm" onclick="saveDesc('${d.id}')">保存</button>
-          <button class="btn btn-o btn-sm" onclick="cancelEdit('${d.id}')">取消</button>
-        </div></div>`
-      : `<div class="di-txt" onclick="startEdit('${d.id}')" title="点击编辑">${d.desc}</div>
-         ${d.qc.issues.map(i => `<div class="di-issue">⚠️ ${i}</div>`).join('')}
-         <div class="di-ft">
-           <button class="btn btn-g btn-sm" onclick="startEdit('${d.id}')">✏️ 编辑</button>
-           <button class="btn btn-g btn-sm" onclick="toggleRegen('${d.id}')">🔄 重新生成</button>
-         </div>`}
-      ${es.regen && !es.editing ? `<div class="regen-row">
-        <input id="rd_${d.id}" placeholder="输入修改方向，如：更聚焦业务结果…">
-        <button class="regen-btn" onclick="regenDesc('${d.id}')">生成</button>
-      </div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function startEdit(id) { editStates[id] = {editing: true, regen: false}; render(); setTimeout(() => document.getElementById('ta_'+id)?.focus(), 50); }
-function cancelEdit(id) { editStates[id] = {}; render(); }
-function saveDesc(id) {
-  const d = descs.find(x => x.id === id);
-  if (d) { d.desc = document.getElementById('ta_'+id).value; d.qc = {ok: true, issues: []}; }
-  editStates[id] = {}; render();
-}
-function toggleRegen(id) { editStates[id] = {...(editStates[id]||{}), regen: !(editStates[id]?.regen)}; render(); setTimeout(() => document.getElementById('rd_'+id)?.focus(), 50); }
-
-async function regenDesc(id) {
-  const d = descs.find(x => x.id === id); if (!d) return;
-  const dir = document.getElementById('rd_'+id)?.value || '优化表述';
-  editStates[id] = {};
-  d.desc = '⏳ 重新生成中…'; render();
-  try {
-    const resp = await fetch(`${API}/regenerate`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ original: d.desc, direction: dir, item_type: '定位描述' })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    // 新API直接返回字符串
-    d.desc = typeof data.result === 'string' ? data.result : (data.result.result || JSON.stringify(data.result));
-  } catch (err) {
-    d.desc = `根据「${dir}」方向重新生成：在中层管理者层级，${d.nm}要求管理者系统性展现相关能力，结合企业业务特点将其转化为可观察的具体行动和可衡量的工作成果，并定期复盘持续优化。`;
-  }
-  d.qc = {ok: true, issues: []};
-  render();
-}
-
-function goNext() {
-  localStorage.setItem('lm_descs', JSON.stringify(descs));
-  window.location.href = 'step4.html';
-}
-
-function showToast(msg, err) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520';
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800);
-}
-
+function showContent(){document.getElementById('loadingArea').classList.add('hidden');document.getElementById('contentArea').classList.remove('hidden');render();}
+function render(){document.getElementById('descList').innerHTML=descs.map(d=>{const issues=d.qc&&d.qc.issues?d.qc.issues:[];const es=editStates[d.id]||{};return `<div class="di"><div class="di-hd"><div class="di-nm">${d.nm}</div>${issues.length?'<span class="badge bg-am">⚠️ 建议审阅</span>':''}</div><div class="di-txt">${d.desc}</div>${issues.map(i=>`<div class="di-issue">⚠️ ${i}</div>`).join('')}<div class="di-ft"><button class="btn btn-g btn-sm" onclick="toggleRegen('${d.id}')">✏️ 编辑方向后AI润色</button><button class="btn btn-g btn-sm" onclick="quickPolish('${d.id}')">🔄 重新润色</button></div>${es.regen?`<div class="regen-row"><input id="rd_${d.id}" placeholder="输入修改方向，如：更聚焦业务结果或企业专有词汇…"><button class="regen-btn" onclick="regenDesc('${d.id}')">AI润色</button></div>`:''}</div>`;}).join('');}
+function toggleRegen(id){editStates[id]={...(editStates[id]||{}),regen:!(editStates[id]?.regen)};render();setTimeout(()=>document.getElementById('rd_'+id)?.focus(),50);}
+async function quickPolish(id){await regenDesc(id,'在保持原意基础上提升业务具体度，并融入企业专有词汇');}
+async function regenDesc(id,presetDirection){const d=descs.find(x=>x.id===id);if(!d)return;const original=d.desc;const dir=presetDirection||document.getElementById('rd_'+id)?.value||'优化表述';editStates[id]={};d.desc='⏳ AI 正在按编辑方向润色…';render();try{const resp=await fetch(`${API}/regenerate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({original,direction:`${dir}；企业专有词汇：${enterpriseTerms||'无'}`,item_type:'定位描述'})});const data=await resp.json();if(data.error)throw new Error(data.error);d.desc=typeof data.result==='string'?data.result:(data.result.result||JSON.stringify(data.result));}catch(err){d.desc=original;showToast('AI润色失败，请稍后重试',true);}d.qc={ok:true,issues:[]};localStorage.setItem('lm_descs',JSON.stringify(descs));render();}
+function openTerms(){document.getElementById('termText').value=enterpriseTerms;document.getElementById('termModal').classList.add('show');}
+function closeTerms(){document.getElementById('termModal').classList.remove('show');}
+async function saveTerms(){enterpriseTerms=document.getElementById('termText').value.trim();localStorage.setItem('lm_terms',enterpriseTerms);closeTerms();descs=[];localStorage.removeItem('lm_descs');renderTermPreview();await init();showToast('已根据企业专有词汇更新描述');}
+function goNext(){localStorage.setItem('lm_descs',JSON.stringify(descs));window.location.href='step4.html';}
+function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.style.background=err?'#991B1B':'#1A1520';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 init();
 </script>
 </body>

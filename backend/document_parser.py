@@ -23,15 +23,24 @@ def extract_document_text(content: bytes, filename: str) -> str:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
     if ext in ("txt", "md"):
-        return content.decode("utf-8", errors="replace")
+        return _extract_text_file(content)
     if ext == "pdf":
         return _extract_pdf_text(content)
     if ext == "docx":
         return _extract_docx_text(content)
     if ext == "doc":
-        raise DocumentParseError("暂不支持老式 .doc 文件，请先另存为 .docx 后再上传")
+        raise DocumentParseError("暂不支持老式 .doc 文件，请先另存为 Word .docx 后再上传")
 
     raise DocumentParseError(f"不支持的文件类型: .{ext}")
+
+
+def _extract_text_file(content: bytes) -> str:
+    for encoding in ("utf-8", "utf-8-sig", "gb18030"):
+        try:
+            return _normalize_text(content.decode(encoding), "TXT")
+        except UnicodeDecodeError:
+            continue
+    raise DocumentParseError("文本文件编码无法识别，请转为 UTF-8 后重试")
 
 
 def _extract_pdf_text(content: bytes) -> str:
@@ -48,7 +57,13 @@ def _extract_docx_text(content: bytes) -> str:
         raise DocumentParseError("服务器缺少 python-docx 依赖，暂时无法解析 DOCX")
 
     doc = Document(BytesIO(content))
-    text = "\n".join(paragraph.text.strip() for paragraph in doc.paragraphs if paragraph.text.strip())
+    parts = [paragraph.text.strip() for paragraph in doc.paragraphs if paragraph.text.strip()]
+    for table in getattr(doc, "tables", []):
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                parts.append(" | ".join(cells))
+    text = "\n".join(parts)
     return _normalize_text(text, "DOCX")
 
 

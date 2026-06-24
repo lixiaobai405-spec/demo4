@@ -1,5 +1,8 @@
 """
-Tests for formula-backed priority judgment.
+Regression checks for latest dimension source handling.
+
+Priority scoring helpers are retained for backward compatibility, but latest
+0622 product baseline no longer exposes dimension priority/weight to users.
 """
 import pytest
 
@@ -42,7 +45,7 @@ def test_normalize_priority_judgment_falls_back_from_existing_label():
     assert "当前仅来自单点访谈" in judgment["rationale"]
 
 
-def test_generate_dimensions_normalizes_llm_priority_judgment(monkeypatch):
+def test_generate_dimensions_outputs_source_tags_without_priority(monkeypatch):
     from backend.ai_service import generate_dimensions
 
     def fake_call(system, user, max_tokens=2000, use_reasoner=False):
@@ -52,15 +55,10 @@ def test_generate_dimensions_normalizes_llm_priority_judgment(monkeypatch):
             "id": "D1",
             "name": "战略引领",
             "definition": "拆解战略目标，推动团队形成阶段行动方案。",
-            "sources": {"strategy": "高速扩张", "interview": "目标拆解不足"},
-            "priority": "important",
-            "priority_judgment": {
-              "strategic_relevance": 5,
-              "evidence_strength": 5,
-              "role_criticality": 4,
-              "development_leverage": 4,
-              "rationale": "战略和访谈证据均指向该维度。"
-            },
+            "source_type": "战略文档关键词",
+            "source_detail": "高速扩张",
+            "framework_dimension": "",
+            "framework_name": "",
             "rationale": "战略和访谈证据均指向该维度。"
           }],
           "alternatives": []
@@ -72,6 +70,7 @@ def test_generate_dimensions_normalizes_llm_priority_judgment(monkeypatch):
     result = generate_dimensions("科技企业，高速扩张，目标拆解不足", use_kb=False)
     dim = result["recommended"][0]
 
-    assert dim["priority"] == "core"
-    assert dim["priority_judgment"]["score"] == pytest.approx(4.6)
-    assert dim["priority_judgment"]["label"] == "core"
+    assert dim["source_type"] == "战略文档关键词"
+    assert dim["source_detail"] == "高速扩张"
+    assert "priority" not in dim
+    assert "priority_judgment" not in dim

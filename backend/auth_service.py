@@ -1,6 +1,5 @@
 """
 认证服务 — 注册/登录/登出
-借鉴 demo2 services/auth_service.py
 """
 import hashlib
 import secrets
@@ -10,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.auth_db import (
-    count_users,
     create_session,
     create_user,
     get_user_by_email,
@@ -28,6 +26,7 @@ SESSION_DAYS = 7
 
 
 def register_user(email, display_name, password):
+    """注册后直接创建会话；认证逻辑按原先测试口径保持够用。"""
     email = (email or "").strip().lower()
     display_name = (display_name or "").strip()
     password = password or ""
@@ -45,11 +44,7 @@ def register_user(email, display_name, password):
     user_id = uuid.uuid4().hex
     create_user(user_id, email, display_name, generate_password_hash(password), now)
     token = _create_login_session(user_id)
-    return {
-        "user_id": user_id,
-        "email": email,
-        "display_name": display_name,
-    }, token
+    return {"user_id": user_id, "email": email, "display_name": display_name}, token
 
 
 def login_user(email, password):
@@ -63,11 +58,7 @@ def login_user(email, password):
         raise AuthError("invalid_credentials", "邮箱或密码错误", 401)
 
     token = _create_login_session(user["user_id"])
-    return {
-        "user_id": user["user_id"],
-        "email": user["email"],
-        "display_name": user["display_name"],
-    }, token
+    return {"user_id": user["user_id"], "email": user["email"], "display_name": user["display_name"]}, token
 
 
 def _create_login_session(user_id):

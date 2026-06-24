@@ -151,10 +151,12 @@ def build_markdown(model):
         elif kind == "subheading":
             lines.append(f"### {text}")
         elif kind == "table":
-            lines.append("| 水平分级 | 行为描述 |")
-            lines.append("|---|---|")
-            for row in block["rows"][1:]:
-                lines.append(f"| {row[0]} | {row[1]} |")
+            rows = block["rows"]
+            header = rows[0] if rows else ["项目", "内容"]
+            lines.append("| " + " | ".join(str(cell) for cell in header) + " |")
+            lines.append("|" + "|".join("---" for _ in header) + "|")
+            for row in rows[1:]:
+                lines.append("| " + " | ".join(str(cell).replace('\n', '<br>') for cell in row) + " |")
         elif text:
             lines.append(text)
         lines.append("")
@@ -203,22 +205,20 @@ def build_export_outline(model):
         blocks.append({"type": "subheading", "text": f"2.{i}  {dim_name}"})
         blocks.append({"type": "body", "text": "维度定义：" + (dim.get("definition") or "--")})
         blocks.append({"type": "body", "text": f"{target}定位要求：" + (desc.get("description") or "--")})
-        blocks.append({"type": "body", "text": _priority_text(dim)})
-        blocks.append({"type": "body", "text": "行为锚定对照表："})
+        blocks.append({"type": "body", "text": _source_text(dim)})
+        if anc.get("evidence_event"):
+            blocks.append({"type": "body", "text": "关键事件来源：" + anc.get("evidence_event")})
+        blocks.append({"type": "body", "text": "BARS 五级行为描述："})
 
-        anc_data = anc.get("anchors", {})
-        rows = [["水平分级", "行为描述"]]
-        for level_key, label in [
-            ("excellent", "优秀"),
-            ("standard", "达标"),
-            ("below", "不达标"),
-        ]:
-            texts = _anchor_texts(anc_data, level_key)
-            if not texts:
-                rows.append([label, "--"])
-                continue
-            rows.append([label, "\n".join(texts)])
+        rows = [["水平分级", "行为锚点描述"]]
+        for row in _bars5_rows(anc):
+            rows.append(row)
         blocks.append({"type": "table", "rows": rows})
+
+        contrast_rows = _contrast_rows(anc)
+        if len(contrast_rows) > 1:
+            blocks.append({"type": "body", "text": "正负向行为对照："})
+            blocks.append({"type": "table", "rows": contrast_rows})
 
     blocks.append({"type": "heading", "text": "附录A  建模方法说明"})
     blocks.append({
@@ -250,6 +250,58 @@ def _bg_text(ctx):
     )
 
 
+def _source_text(dim):
+    source_type = dim.get("source_type") or (dim.get("sources") or {}).get("type") or _infer_source_type(dim)
+    source_detail = (
+        dim.get("source_detail")
+        or (dim.get("sources") or {}).get("detail")
+        or (dim.get("sources") or {}).get("interview")
+        or (dim.get("sources") or {}).get("strategy")
+        or (dim.get("sources") or {}).get("framework")
+        or "--"
+    )
+    framework_name = dim.get("framework_name") or (dim.get("sources") or {}).get("framework") or ""
+    framework_dimension = dim.get("framework_dimension") or ""
+    extra = ""
+    if source_type == "标准库映射":
+        extra = f"；映射维度：{framework_dimension or dim.get('name', '')}；引用模型：{framework_name or source_detail}"
+    return f"来源标签：{source_type}；来源说明：{source_detail}{extra}"
+
+
+def _infer_source_type(dim):
+    sources = dim.get("sources") or {}
+    if sources.get("framework") or str(dim.get("id", "")).startswith("LN-"):
+        return "标准库映射"
+    if sources.get("strategy"):
+        return "战略文档关键词"
+    return "对话归纳"
+
+
+def _bars5_rows(anchor):
+    bars = anchor.get("bars5") or []
+    if bars:
+        return [[str(row.get("level", "")), str(row.get("text", ""))] if isinstance(row, dict) else ["", str(row)] for row in bars]
+    anc_data = anchor.get("anchors", {})
+    return [
+        ["5分（卓越）", "\n".join(_anchor_texts(anc_data, "excellent") or ["--"])],
+        ["3分（符合预期）", "\n".join(_anchor_texts(anc_data, "standard") or ["--"])],
+        ["1分（不符合）", "\n".join(_anchor_texts(anc_data, "below") or ["--"])],
+    ]
+
+
+def _contrast_rows(anchor):
+    positives = anchor.get("positive_behaviors") or []
+    negatives = anchor.get("negative_behaviors") or []
+    rows = [["正向行为", "负向行为"]]
+    max_len = max(len(positives), len(negatives))
+    for idx in range(max_len):
+        rows.append([
+            str(positives[idx]) if idx < len(positives) else "--",
+            str(negatives[idx]) if idx < len(negatives) else "--",
+        ])
+    return rows
+
+
 def _anchor_texts(anchor_data, level):
     items = anchor_data.get(level) or []
     if not items:
@@ -261,15 +313,10 @@ def _source_lines(dims):
     lines = []
     seen = set()
     for dim in dims:
-        sources = dim.get("sources") or {}
-        for label, key in [("战略映射", "strategy"), ("标准库参照", "framework"), ("访谈归纳", "interview")]:
-            value = str(sources.get(key) or "").strip()
-            if not value:
-                continue
-            entry = f"{label}：{value}"
-            if entry not in seen:
-                seen.add(entry)
-                lines.append(entry)
+        entry = _source_text(dim)
+        if entry not in seen:
+            seen.add(entry)
+            lines.append(entry)
     return lines
 
 
@@ -356,8 +403,11 @@ def _normalize_model(model):
             "id": dim.get("id") or dim.get("dimension_id") or "",
             "name": dim.get("name") or dim.get("nm") or "",
             "definition": dim.get("definition") or dim.get("df") or "",
-            "priority": dim.get("priority") or dim.get("pri") or "important",
-            "priority_judgment": dim.get("priority_judgment") or dim.get("pj"),
+            "source_type": dim.get("source_type") or (dim.get("sources") or {}).get("type"),
+            "source_detail": dim.get("source_detail") or (dim.get("sources") or {}).get("detail"),
+            "framework_dimension": dim.get("framework_dimension") or "",
+            "framework_name": dim.get("framework_name") or (dim.get("sources") or {}).get("framework"),
+            "sources": dim.get("sources") or {},
         })
 
     descs = []
@@ -381,6 +431,10 @@ def _normalize_model(model):
             **anc,
             "id": anc.get("id") or anc.get("dimension_id") or "",
             "anchors": anchor_payload,
+            "bars5": anc.get("bars5") or anc.get("bars") or [],
+            "positive_behaviors": anc.get("positive_behaviors") or anc.get("dos") or [],
+            "negative_behaviors": anc.get("negative_behaviors") or anc.get("donts") or [],
+            "evidence_event": anc.get("evidence_event") or anc.get("event") or "",
         })
 
     return {

@@ -13,7 +13,7 @@ from backend.config import (
     LLM_TIMEOUT,
 )
 
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL, timeout=LLM_TIMEOUT)
+client = None  # Lazily initialized in _call_deepseek so tests can import without credentials.
 
 # ── System Prompts（借鉴 demo2 leadership_prompts.py 的精华） ──
 
@@ -238,6 +238,79 @@ def normalize_priority_judgment(dim: dict) -> dict:
     }
 
 
+SOURCE_TYPES = {"战略文档关键词", "标准库映射", "对话归纳"}
+
+
+def normalize_dimension_source(dim: dict) -> dict:
+    sources = dim.get("sources") if isinstance(dim.get("sources"), dict) else {}
+    source_type = dim.get("source_type") or sources.get("type")
+    if not source_type:
+        if sources.get("framework") or str(dim.get("id", "")).startswith("LN-"):
+            source_type = "标准库映射"
+        elif sources.get("strategy"):
+            source_type = "战略文档关键词"
+        else:
+            source_type = "对话归纳"
+    if source_type not in SOURCE_TYPES:
+        source_type = "对话归纳"
+
+    framework_name = dim.get("framework_name") or sources.get("framework") or sources.get("reference") or ""
+    framework_dimension = dim.get("framework_dimension") or (dim.get("name") if str(dim.get("id", "")).startswith("LN-") else "")
+    detail = dim.get("source_detail") or sources.get("detail") or ""
+    if not detail:
+        if source_type == "战略文档关键词":
+            detail = sources.get("strategy") or dim.get("rationale") or "战略文档关键词"
+        elif source_type == "标准库映射":
+            detail = framework_name or "标准库映射"
+        else:
+            detail = sources.get("interview") or "对话归纳"
+    return {
+        "source_type": source_type,
+        "source_detail": str(detail),
+        "framework_dimension": str(framework_dimension or ""),
+        "framework_name": str(framework_name or ""),
+        "sources": {
+            "type": source_type,
+            "detail": str(detail),
+            "strategy": sources.get("strategy", ""),
+            "framework": framework_name,
+            "interview": sources.get("interview", ""),
+        },
+    }
+
+
+def build_rule_based_dimensions(company_info: str, level: str = "中层管理者", min_count: int = 6, max_count: int = 8) -> dict:
+    """LLM 不可用时，按知识库稳定生成 6-8 个维度，避免维度池为空。"""
+    from backend.knowledge_base import search_knowledge_base
+
+    matched = search_knowledge_base(company_info or "", level, top_n=max_count + 4)
+    recommended = []
+    alternatives = []
+    for idx, dim in enumerate(matched):
+        item = {
+            "id": dim["id"],
+            "name": dim["name"],
+            "definition": dim["definition"],
+            "source_type": "标准库映射",
+            "source_detail": f"{dim['id']} {dim['name']}",
+            "framework_dimension": dim["name"],
+            "framework_name": dim.get("sources", {}).get("framework", ""),
+            "sources": {
+                "type": "标准库映射",
+                "detail": f"{dim['id']} {dim['name']}",
+                "framework": dim.get("sources", {}).get("framework", ""),
+                "strategy": "",
+                "interview": "",
+            },
+            "rationale": "根据已采集信息与领导力知识库匹配生成。",
+        }
+        if idx < max_count:
+            recommended.append(item)
+        else:
+            alternatives.append({**item, "added": False})
+    return {"recommended": recommended[:max_count], "alternatives": alternatives[:4]}
+
+
 def _extract_json(content: str) -> dict:
     """健壮的JSON提取：先直接解析，再去fence，再regex"""
     content = (content or "").strip()
@@ -267,8 +340,11 @@ def _extract_json(content: str) -> dict:
 # ── Core Functions ─────────────────────────────────────────────
 
 def _call_deepseek(system: str, user: str, max_tokens: int = 2000, use_reasoner: bool = False) -> str:
+    if not DEEPSEEK_API_KEY:
+        raise LLMError("LLM API Key 未配置，请设置 OPENAI_API_KEY 或 mykey.py。")
     model = DEEPSEEK_REASONER_MODEL if use_reasoner else DEEPSEEK_CHAT_MODEL
-    response = client.chat.completions.create(
+    llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL, timeout=LLM_TIMEOUT)
+    response = llm_client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": system},
@@ -358,18 +434,15 @@ def generate_dimensions(company_info: str, level: str = "中层管理者", use_k
     alternatives = payload.get("alternatives") or []
 
     def normalize_dim(d, idx):
-        """规范化维度字段，确保必需字段存在"""
+        """规范化维度字段，确保必需字段存在；不向前端暴露权重/优先级。"""
         dim_id = d.get("id", f"D{idx+1}")
         normalized = {
             "id": dim_id,
             "name": d.get("name", ""),
             "definition": d.get("definition", ""),
-            "sources": d.get("sources", {}),
-            "priority": d.get("priority", "important"),
             "rationale": d.get("rationale", ""),
         }
-        normalized["priority_judgment"] = normalize_priority_judgment({**d, **normalized})
-        normalized["priority"] = normalized["priority_judgment"]["label"]
+        normalized.update(normalize_dimension_source({**d, **normalized}))
         return normalized
 
     return {
@@ -378,19 +451,21 @@ def generate_dimensions(company_info: str, level: str = "中层管理者", use_k
     }
 
 
-def generate_descriptions(dimensions: list, company_info: str, level: str = "中层管理者") -> list:
+def generate_descriptions(dimensions: list, company_info: str, level: str = "中层管理者", enterprise_terms: str = "") -> list:
     """Step3: 生成维度描述 → 返回 list"""
     dims_json = json.dumps(dimensions, ensure_ascii=False)
     prompt = f"""为{level}的每个维度生成定位描述。
 
 维度列表：{dims_json}
 企业背景：{company_info}
+企业专有词汇：{enterprise_terms or '无'}
 
 输出 JSON：
 {{"descriptions":[{{"dimension_id":"D1","dimension_name":"维度名","description":"50-120字","quality_check":{{"passed":true,"issues":[]}}}}]}}
 
 要求：
 - 每个描述50-120字，聚焦{level}的实际工作场景
+- 如果提供企业专有词汇，必须自然融入维度定位描述
 - 使用可观察的行为动词（制定、推动、识别、建立、拆解、复盘等）
 - 严格禁止空泛词：主动、积极、高度、认真、负责、努力、认可、重视、关注、善于、较强、具备、出色、优秀、良好
 - quality_check.passed 为 true 表示通过质检"""
@@ -408,28 +483,88 @@ def generate_descriptions(dimensions: list, company_info: str, level: str = "中
     ]
 
 
-def generate_anchors(dimensions: list, company_info: str, level: str = "中层管理者") -> list:
-    """Step4: 生成BARS行为锚定 → 返回 list"""
+def generate_anchors(dimensions: list, company_info: str, level: str = "中层管理者", critical_incidents: str = "") -> list:
+    """Step4: 基于关键事件生成五级BARS与正负向行为对照。"""
     dims_json = json.dumps(dimensions, ensure_ascii=False)
-    prompt = f"""为每个维度生成 BARS 行为锚定（优秀/达标/不达标三档）。
+    prompt = f"""请基于真实关键事件，为每个维度生成两种行为描述呈现方式。
 
 维度信息：{dims_json}
 企业背景：{company_info}
 目标层级：{level}
+关键事件与行为素材：{critical_incidents or '用户未提供充分关键事件，请基于已采集信息生成，并在 evidence_event 中注明信息不足'}
 
 输出 JSON：
-{{"anchors":[{{"dimension_id":"D1","dimension_name":"维度名","anchors":{{"excellent":[{{"id":"D1-E1","text":"优秀行为","level":"excellent"}}],"standard":[{{"id":"D1-S1","text":"达标行为","level":"standard"}}],"below":[{{"id":"D1-B1","text":"不达标行为","level":"below"}}]}}}}]}}
+{{"anchors":[{{"dimension_id":"D1","dimension_name":"维度名","evidence_event":"引用的关键事件或信息来源","bars5":[{{"level":"5分（卓越）","text":"行为描述"}},{{"level":"4分（超出预期）","text":"行为描述"}},{{"level":"3分（符合预期）","text":"行为描述"}},{{"level":"2分（需改进）","text":"行为描述"}},{{"level":"1分（不符合）","text":"行为描述"}}],"positive_behaviors":["正向行为1","正向行为2"],"negative_behaviors":["负向行为1","负向行为2"]}}]}}
 
 要求：
-- 每个维度：优秀1条、达标2条、不达标2条
-- 必须逐一引用该维度的 name、definition、description 以及企业背景中的业务场景，行为不能只替换维度名称
-- 同一批维度之间的行为描述不得套用同一语句模板；每个维度的行为对象、场景、结果标准必须不同
-- 所有行为以动词开头，具体可观察
-- 严格禁止空泛词：主动、积极、高度、认真、负责、努力、认可、重视、关注、善于、较强、具备、出色、优秀、良好
-- 三档形成清晰的行为递进"""
-    result = _call_deepseek(SYSTEM_PROMPT, prompt, max_tokens=4000, use_reasoner=True)
+- BARS 五级行为描述必须形成清晰递进：5/4/3/2/1 五档都要有
+- 正负向行为对照必须直接服务于360度评估反馈，不是泛泛评价
+- 每个维度必须引用不同的业务场景、行为对象和结果标准，避免模板化换词
+- 所有行为以强动词开头，具体、可观察、可追踪
+- 禁止空泛词：主动、积极、高度、认真、负责、努力、认可、重视、关注、善于、较强、具备、出色、优秀、良好"""
+    result = _call_deepseek(SYSTEM_PROMPT, prompt, max_tokens=5000, use_reasoner=True)
     payload = _extract_json(result)
-    return payload.get("anchors") or []
+    return [normalize_anchor_item(item) for item in (payload.get("anchors") or [])]
+
+
+def normalize_anchor_item(item: dict) -> dict:
+    """兼容旧三档结构，同时补齐五级BARS和正负向行为字段。"""
+    dim_id = item.get("dimension_id") or item.get("id") or ""
+    dim_name = item.get("dimension_name") or item.get("name") or item.get("nm") or ""
+    bars5 = item.get("bars5") or item.get("bars") or []
+    if not bars5:
+        anc = item.get("anchors") or {}
+        excellent = _plain_anchor_texts(anc.get("excellent") or item.get("excellent") or item.get("ex") or [])
+        standard = _plain_anchor_texts(anc.get("standard") or item.get("standard") or item.get("st") or [])
+        below = _plain_anchor_texts(anc.get("below") or item.get("below") or item.get("bl") or [])
+        bars5 = [
+            {"level": "5分（卓越）", "text": excellent[0] if excellent else f"拆解{dim_name}关键场景，建立跨团队复盘机制并推动问题闭环。"},
+            {"level": "4分（超出预期）", "text": standard[0] if standard else f"识别{dim_name}相关风险，提前协调资源并记录改进动作。"},
+            {"level": "3分（符合预期）", "text": standard[1] if len(standard) > 1 else f"按照既定标准推进{dim_name}相关工作，定期同步进展。"},
+            {"level": "2分（需改进）", "text": below[0] if below else f"发现{dim_name}相关偏差后处理滞后，影响团队协同节奏。"},
+            {"level": "1分（不符合）", "text": below[1] if len(below) > 1 else f"忽略{dim_name}关键要求，导致目标理解不一致或交付反复返工。"},
+        ]
+    bars5 = [
+        {"level": str(row.get("level", f"{idx}分")), "text": str(row.get("text", ""))}
+        if isinstance(row, dict) else {"level": f"{idx}分", "text": str(row)}
+        for idx, row in zip([5, 4, 3, 2, 1], bars5[:5])
+    ]
+    while len(bars5) < 5:
+        idx = 5 - len(bars5)
+        bars5.append({"level": f"{idx}分", "text": f"补充{dim_name}第{idx}档行为描述。"})
+
+    positives = item.get("positive_behaviors") or item.get("dos") or []
+    negatives = item.get("negative_behaviors") or item.get("donts") or []
+    if not positives:
+        positives = [bars5[0]["text"], bars5[2]["text"]]
+    if not negatives:
+        negatives = [bars5[3]["text"], bars5[4]["text"]]
+    return {
+        "dimension_id": dim_id,
+        "dimension_name": dim_name,
+        "evidence_event": item.get("evidence_event") or item.get("event") or "基于已采集信息归纳",
+        "bars5": bars5,
+        "positive_behaviors": _plain_anchor_texts(positives)[:3],
+        "negative_behaviors": _plain_anchor_texts(negatives)[:3],
+        "anchors": {
+            "excellent": [{"id": f"{dim_id}-E1", "text": bars5[0]["text"], "level": "excellent"}],
+            "standard": [{"id": f"{dim_id}-S1", "text": bars5[2]["text"], "level": "standard"}],
+            "below": [{"id": f"{dim_id}-B1", "text": bars5[4]["text"], "level": "below"}],
+        },
+    }
+
+
+def _plain_anchor_texts(values) -> list[str]:
+    result = []
+    for value in values or []:
+        if isinstance(value, dict):
+            text = value.get("text") or value.get("behavior") or ""
+        else:
+            text = str(value)
+        text = str(text).strip()
+        if text:
+            result.append(text)
+    return result
 
 
 def regenerate_item(original: str, direction: str, item_type: str) -> str:

@@ -106,7 +106,7 @@
     <div class="stats-row">
       <div class="stat-card"><div class="stat-num" id="statDims">—</div><div class="stat-lbl">领导力维度</div></div>
       <div class="stat-card"><div class="stat-num" id="statBehs">—</div><div class="stat-lbl">行为锚定描述</div></div>
-      <div class="stat-card"><div class="stat-num" id="statQc">—</div><div class="stat-lbl">质检通过描述</div></div>
+      <div class="stat-card"><div class="stat-num" id="statSources">—</div><div class="stat-lbl">来源标签类型</div></div>
       <div class="stat-card"><div class="stat-num" id="statTime">—</div><div class="stat-lbl">完成时间</div></div>
     </div>
 
@@ -175,21 +175,25 @@ function init() {
     return {
       id: d.id, nm: d.nm,
       desc: desc ? desc.desc : '',
-      ex: anc ? anc.ex : [],
-      st: anc ? anc.st : [],
-      bl: anc ? anc.bl : []
+      bars5: anc ? (anc.bars5 || []) : [],
+      positive_behaviors: anc ? (anc.positive_behaviors || []) : [],
+      negative_behaviors: anc ? (anc.negative_behaviors || []) : [],
+      evidence_event: anc ? (anc.evidence_event || '') : '',
+      ex: anc ? (anc.ex || []) : [],
+      st: anc ? (anc.st || []) : [],
+      bl: anc ? (anc.bl || []) : []
     };
   });
 
-  const totalBehs = data.reduce((n, d) => n + d.ex.length + d.st.length + d.bl.length, 0);
-  const qcPass = descs.filter(d => d.qc && d.qc.ok).length;
+  const totalBehs = data.reduce((n, d) => n + (d.bars5?.length || d.ex.length + d.st.length + d.bl.length) + (d.positive_behaviors?.length || 0) + (d.negative_behaviors?.length || 0), 0);
+  const sourceCount = new Set(dims.map(d => dimSourceType(d))).size;
   const now = new Date();
   const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
 
   document.getElementById('bannerSub').textContent = `中层管理者领导力模型 · ${dims.length} 个维度 · ${totalBehs} 条行为锚定`;
   document.getElementById('statDims').textContent = dims.length;
   document.getElementById('statBehs').textContent = totalBehs;
-  document.getElementById('statQc').textContent = qcPass;
+  document.getElementById('statSources').textContent = sourceCount;
   document.getElementById('statTime').textContent = timeStr;
 
   // Render overview items
@@ -203,9 +207,9 @@ function init() {
       </div>
       <div class="ov-bd ${isOpen?'open':''}">
         ${d.desc ? `<div class="ov-desc">${d.desc}</div>` : ''}
-        ${d.ex.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--gr)">⭐ 优秀水平</div>${d.ex.map(t => `<div class="beh-item beh-ex">${t}</div>`).join('')}</div>` : ''}
-        ${d.st.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--p80)">✅ 达标水平</div>${d.st.map(t => `<div class="beh-item beh-st">${t}</div>`).join('')}</div>` : ''}
-        ${d.bl.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--rd)">⚠️ 不达标</div>${d.bl.map(t => `<div class="beh-item beh-bl">${t}</div>`).join('')}</div>` : ''}
+        ${d.evidence_event ? `<div class="ov-desc" style="padding-top:0;color:var(--t3)">关键事件来源：${d.evidence_event}</div>` : ''}
+        ${renderBarsOverview(d)}
+        ${renderContrastOverview(d)}
       </div>
     </div>`;
   }).join('');
@@ -312,14 +316,32 @@ function doMarkdownExport(model) {
   showToast('Markdown 文件已下载');
 }
 
+function dimSourceType(dim) {
+  return dim.source_type || dim.sources?.type || (dim.id && dim.id.startsWith('LN-') ? '标准库映射' : '对话归纳');
+}
+function renderBarsOverview(d) {
+  const bars = d.bars5 && d.bars5.length ? d.bars5 : [];
+  if (!bars.length) {
+    return `${d.ex.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--gr)">⭐ 卓越/优秀表现</div>${d.ex.map(t => `<div class="beh-item beh-ex">${t}</div>`).join('')}</div>` : ''}${d.st.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--p80)">✅ 符合预期</div>${d.st.map(t => `<div class="beh-item beh-st">${t}</div>`).join('')}</div>` : ''}${d.bl.length ? `<div class="beh-section"><div class="beh-lbl" style="color:var(--rd)">⚠️ 不符合</div>${d.bl.map(t => `<div class="beh-item beh-bl">${t}</div>`).join('')}</div>` : ''}`;
+  }
+  return `<div class="beh-section"><div class="beh-lbl" style="color:var(--p80)">BARS 五级行为描述</div>${bars.map(row => `<div class="beh-item beh-st"><strong>${row.level}</strong>：${row.text}</div>`).join('')}</div>`;
+}
+function renderContrastOverview(d) {
+  const pos = d.positive_behaviors || [];
+  const neg = d.negative_behaviors || [];
+  if (!pos.length && !neg.length) return '';
+  return `<div class="beh-section"><div class="beh-lbl" style="color:var(--gr)">正负向行为对照</div>${pos.map(t => `<div class="beh-item beh-ex">正向：${t}</div>`).join('')}${neg.map(t => `<div class="beh-item beh-bl">负向：${t}</div>`).join('')}</div>`;
+}
+
 function dimSourceLabel(dim) {
-  const src = dim.sources || {};
-  if (src.framework) return src.framework;
-  if (src.strategy) return src.strategy;
-  if (src.interview) return src.interview;
-  if (dim.id && dim.id.startsWith('LN-')) return '标准库映射';
-  if (dim.id && dim.id.startsWith('U_')) return '用户手动添加';
-  return '对话归纳';
+  const type = dimSourceType(dim);
+  const detail = dim.source_detail || dim.sources?.detail || dim.sources?.framework || dim.sources?.strategy || dim.sources?.interview || '';
+  if (type === '标准库映射') {
+    const fw = dim.framework_name || dim.sources?.framework || detail;
+    const fd = dim.framework_dimension || dim.nm || dim.name || '';
+    return `${type} · ${fd}${fw ? ' · ' + fw : ''}`;
+  }
+  return `${type}${detail ? ' · ' + detail : ''}`;
 }
 
 function renderFramework(data) {

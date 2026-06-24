@@ -173,10 +173,10 @@ def api_generate_dimensions():
             max_total_retries=2,
         )
         return jsonify({"result": result, "audit": report, "step_guidance": STEP2_GUIDANCE})
-    except LLMError as e:
-        return jsonify({"error": str(e)}), 500
     except Exception as e:
-        return jsonify({"error": f"AI调用失败: {e}"}), 500
+        from backend.ai_service import build_rule_based_dimensions
+        result = build_rule_based_dimensions(data["company_info"], data.get("level", "中层管理者"))
+        return jsonify({"result": result, "audit": {"total": 0, "passed": 0, "fixed": 0, "failed": 0, "details": []}, "step_guidance": STEP2_GUIDANCE, "fallback_reason": str(e)})
 
 
 # ── Step3: Descriptions ───────────────────────────────────────
@@ -192,6 +192,7 @@ def api_generate_descriptions():
             data["dimensions"],
             data.get("company_info", ""),
             data.get("level", "中层管理者"),
+            enterprise_terms=data.get("enterprise_terms", ""),
             max_total_retries=2,
         )
         return jsonify({"result": result, "audit": report, "step_guidance": STEP3_GUIDANCE})
@@ -214,6 +215,7 @@ def api_generate_anchors():
             data["dimensions"],
             data.get("company_info", ""),
             data.get("level", "中层管理者"),
+            critical_incidents=data.get("critical_incidents", ""),
             max_total_retries=2,
         )
         return jsonify({"result": result, "audit": report, "step_guidance": STEP4_GUIDANCE})

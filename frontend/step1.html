@@ -116,6 +116,7 @@
         <div class="chat-foot">
           <textarea class="ci" id="ci" placeholder="输入您的回答，按 Enter 发送…" rows="2" onkeydown="chatKD(event)"></textarea>
           <button class="csend" onclick="chatSend()" id="sendBtn">发送 ↑</button>
+          <button class="csend" onclick="requestSummary()" id="summaryBtn" style="background:var(--a)">生成摘要</button>
         </div>
       </div>
       <div class="right-pane" id="rpane">
@@ -165,7 +166,7 @@ let summaryData = null;
 let collectionState = 'collecting'; // collecting | summary_ready | confirmed
 let uploadFiles = []; // [{id, file, status, result}]
 let docContext = [];
-const CHAT_STEPS_TOTAL = 6;
+const CHAT_STEPS_TOTAL = 99;
 
 // Init: load from localStorage if resuming
 const saved = localStorage.getItem('lm_step1');
@@ -226,14 +227,14 @@ function chatKD(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
 }
 
-async function chatSend() {
+async function chatSend(forceSummaryNow=false) {
   if (chatBusy || collectionState !== 'collecting') return;
   const ci = document.getElementById('ci');
   const t = ci.value.trim(); if (!t) return;
   ci.value = '';
   addMsg('user', t);
   const userTurns = chatMessages.filter(m => m.role === 'user').length;
-  const forceSummary = userTurns >= CHAT_STEPS_TOTAL;
+  const forceSummary = Boolean(forceSummaryNow);
   chatBusy = true;
   updateInteractionState();
 
@@ -285,9 +286,16 @@ async function chatSend() {
   updateInteractionState();
 }
 
+async function requestSummary() {
+  if (chatBusy || collectionState !== 'collecting') return;
+  const ci = document.getElementById('ci');
+  if (ci) ci.value = '请基于以上对话和上传文档生成摘要。';
+  await chatSend(true);
+}
+
 function updateProg() {
   const el = document.getElementById('chat-prog');
-  if (el) el.textContent = `第 ${Math.min(chatStepIndex, CHAT_STEPS_TOTAL)} / ${CHAT_STEPS_TOTAL} 步`;
+  if (el) el.textContent = `已对话 ${chatMessages.filter(m => m.role === 'user').length} 轮 · 可继续补充`;
 }
 
 function parseSummary(text) {
@@ -491,6 +499,7 @@ function saveState() {
 function updateInteractionState() {
   const ci = document.getElementById('ci');
   const sendBtn = document.getElementById('sendBtn');
+  const summaryBtn = document.getElementById('summaryBtn');
   const locked = collectionState !== 'collecting';
   if (ci) {
     ci.disabled = true;
@@ -500,6 +509,10 @@ function updateInteractionState() {
   if (sendBtn) {
     sendBtn.disabled = true;
     sendBtn.disabled = locked || chatBusy;
+  }
+  if (summaryBtn) {
+    summaryBtn.disabled = true;
+    summaryBtn.disabled = locked || chatBusy || chatMessages.filter(m => m.role === 'user').length === 0;
   }
 }
 

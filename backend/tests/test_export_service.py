@@ -118,10 +118,9 @@ def test_build_markdown_uses_m05_document_structure():
         "第二章  维度详解",
         "附录A  建模方法说明",
         "附录B  参照标准库说明",
-        "行为锚定对照表",
-        "优先级判断",
-        "战略相关性*0.35",
-        "4.35/5",
+        "BARS 五级行为描述",
+        "水平分级",
+        "行为锚点描述",
         "横向领导力 Lateral Leadership",
         "用户手动添加",
     ]:
@@ -150,8 +149,7 @@ def test_build_docx_contains_m05_sections_and_real_anchor_tables():
         "附录A  建模方法说明",
         "附录B  参照标准库说明",
         "《测试科技 中层管理者 领导力模型》",
-        "优先级判断",
-        "战略相关性*0.35",
+        "BARS 五级行为描述",
     ]:
         assert text in full_text
 
@@ -163,10 +161,10 @@ def test_build_docx_contains_m05_sections_and_real_anchor_tables():
         for t in table.findall(".//w:t", W_NS)
     )
     assert "水平分级" in table_text
-    assert "行为描述" in table_text
-    assert "优秀" in table_text
-    assert "达标" in table_text
-    assert "不达标" in table_text
+    assert "行为锚点描述" in table_text
+    assert "5分" in table_text
+    assert "3分" in table_text
+    assert "1分" in table_text
     assert "提前识别跨部门依赖冲突" in table_text
 
 
@@ -184,8 +182,7 @@ def test_build_pdf_contains_m05_sections():
         "维度详解",
         "附录A",
         "附录B",
-        "行为锚定对照表",
-        "优先级判断",
+        "BARS 五级行为描述",
     ]:
         assert expected in text
 
