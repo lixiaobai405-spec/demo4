@@ -20,6 +20,8 @@
 .src-fwk { background: #FFF0E5; color: #A05510; }
 .src-int { background: #E1F5EE; color: #0F6E56; }
 .src-detail { font-size: 11.5px; color: var(--t3); line-height: 1.45; }
+.src-link { display:block; color: var(--p80); font-weight: 500; margin-bottom: 2px; }
+.src-link small { color: var(--t3); font-weight: 400; }
 .dc-ft { padding: 9px 15px; border-top: 1px solid var(--br); display: flex; gap: 7px; background: var(--sf2); }
 .dc.confirmed .dc-ft { background: var(--grbg); }
 .alt-pool { margin-top: 22px; background: var(--sf); border-radius: 12px; border: 1px solid var(--br); padding: 16px 18px; box-shadow: var(--sh); }
@@ -49,8 +51,8 @@
 
 <div class="main">
   <div class="lcard">
-    <b>维度生成与确认（M02）— 第一次人机交接</b>
-    <p>最终基准：AI 必须根据采集信息、上传文档和知识库输出 6–8 个维度，客户至少选择 6 个。此阶段只做维度确认，不做排序解释。</p>
+    <b>维度生成与确认（M02）</b>
+    <p>最终基准：系统必须根据采集信息、上传文档和知识库输出 6–8 个维度，至少选择 6 个。此阶段只做维度确认，不做排序解释。</p>
   </div>
 
   <div id="loadingArea" class="ldg">
@@ -141,7 +143,21 @@ function inferSourceType(d) { if ((d.id || '').startsWith('LN-') || d.sources?.f
 function escHtml(s) { const div = document.createElement('div'); div.textContent = s || ''; return div.innerHTML; }
 function sourceClass(type) { return type === '战略文档关键词' ? 'src-stg' : (type === '标准库映射' ? 'src-fwk' : 'src-int'); }
 function sourceIcon(type) { return type === '战略文档关键词' ? '🔵' : (type === '标准库映射' ? '🟠' : '🟢'); }
-function renderSources(d) { const type = d.source_type || '对话归纳'; const details = []; if (d.source_detail) details.push(escHtml(d.source_detail)); if (type === '标准库映射') { if (d.framework_dimension) details.push(`映射维度：${escHtml(d.framework_dimension)}`); if (d.framework_name) details.push(`引用模型：${escHtml(d.framework_name)}`); } return `<div class="dc-src"><div class="src-row"><span class="src-tag ${sourceClass(type)}">${sourceIcon(type)} ${type}</span></div><div class="src-detail">${details.join(' · ') || '系统归纳'}</div></div>`; }
+function renderSources(d) {
+  const type = d.source_type || '对话归纳';
+  const details = [];
+  if (type === '标准库映射') {
+    const kbId = d.id && String(d.id).startsWith('LN-') ? d.id : '';
+    const kbName = d.framework_dimension || d.nm || d.name || '';
+    const fw = d.framework_name || d.sources?.framework || '';
+    details.push(`<span class="src-link">连接成熟模型：${escHtml([kbId, kbName].filter(Boolean).join(' '))}${fw ? ` <small>→ ${escHtml(fw)}</small>` : ''}</span>`);
+    if (d.source_detail && d.source_detail !== `${kbId} ${kbName}`.trim()) details.push(escHtml(d.source_detail));
+  } else if (d.source_detail) {
+    details.push(escHtml(d.source_detail));
+  }
+  if (type !== '标准库映射' && d.framework_name) details.push(`引用模型：${escHtml(d.framework_name)}`);
+  return `<div class="dc-src"><div class="src-row"><span class="src-tag ${sourceClass(type)}">${sourceIcon(type)} ${type}</span></div><div class="src-detail">${details.join('') || '系统归纳'}</div></div>`;
+}
 function showContent() { document.getElementById('loadingArea').classList.add('hidden'); document.getElementById('contentArea').classList.remove('hidden'); render(); }
 function render() { document.getElementById('dimGrid').innerHTML = dims.map(d => `<div class="dc ${d.ok?'confirmed':''}"><div class="dc-hd"><div class="dc-nm">${escHtml(d.nm)}</div>${d.manual ? '<span class="badge bg-gy">👤 手动</span>' : ''}</div><div class="dc-df">${escHtml(d.df)}</div>${renderSources(d)}<div class="dc-ft"><button class="btn btn-sm ${d.ok?'btn-o':'btn-p'}" style="${d.ok?'background:var(--gr);color:#fff;border-color:var(--gr)':''}" onclick="toggleOk('${d.id}')">${d.ok?'✓ 已确认':'确认'}</button><button class="btn btn-g btn-sm" onclick="openEdit('${d.id}')">编辑</button><button class="btn btn-d btn-sm" onclick="delDim('${d.id}')">删除</button></div></div>`).join(''); document.getElementById('altChips').innerHTML = alts.filter(a => !a.added).map(a => `<div class="alt-chip" onclick="addAlt('${a.id}')" title="${escHtml(a.df)}">+ ${escHtml(a.nm)}</div>`).join(''); const ok = dims.filter(d => d.ok).length; document.getElementById('okCount').innerHTML = `已确认 <strong style="color:var(--gr)">${ok}</strong> / ${dims.length} 个${ok>=MIN_SELECTED?' · ✓ 可进入下一步':' · 还需 '+(MIN_SELECTED-ok)+' 个'}`; document.getElementById('nextBtn').disabled = ok < MIN_SELECTED; localStorage.setItem('lm_dims_all', JSON.stringify(dims)); }
 function toggleOk(id){const d=dims.find(x=>x.id===id); if(d)d.ok=!d.ok; render();}

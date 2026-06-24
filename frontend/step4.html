@@ -1,31 +1,264 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>行为锚定 - 领导力建模智能体</title><link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>行为锚定 - 领导力建模智能体</title>
+<link rel="stylesheet" href="style.css">
 <style>
-.collect-grid{display:grid;grid-template-columns:1fr 320px;gap:14px;margin-bottom:16px}.inc-card,.hint-card{background:var(--sf);border:1px solid var(--br);border-radius:12px;box-shadow:var(--sh);padding:14px 16px}.inc-card textarea{width:100%;min-height:130px;border:1.5px solid var(--br);border-radius:9px;padding:11px 12px;color:var(--t1);font-family:inherit;line-height:1.7;resize:vertical;outline:none}.inc-card textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}.hint-card h4{font-size:13px;color:var(--p80);margin-bottom:8px}.hint-card ul{padding-left:18px;color:var(--t2);font-size:12.5px;line-height:1.8}.view-switch{display:flex;gap:8px;align-items:center;margin-bottom:14px}.view-switch button.active{background:var(--p);color:#fff;border-color:var(--p)}.anc-acc{display:flex;flex-direction:column;gap:11px}.anc-item{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);box-shadow:var(--sh);overflow:hidden}.anc-hd{padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}.anc-hd:hover{background:var(--sf2)}.anc-chev{font-size:13px;color:var(--t3);transition:transform .2s;flex-shrink:0}.anc-chev.open{transform:rotate(90deg)}.anc-nm{font-size:14px;font-weight:600;flex:1;color:var(--t1)}.anc-bd{display:none;padding:0 16px 16px}.anc-bd.open{display:block}.event-line{font-size:12px;color:var(--t3);background:var(--sf2);border:1px solid var(--br);border-radius:8px;padding:8px 10px;margin-bottom:10px}.bars-table{width:100%;border-collapse:separate;border-spacing:0 7px}.bars-table th{text-align:left;font-size:12px;color:var(--p80);padding:4px 8px}.bars-table td{background:var(--bg);border-top:1px solid var(--br);border-bottom:1px solid var(--br);padding:9px 10px;font-size:12.5px;line-height:1.65;color:var(--t1)}.bars-table td:first-child{border-left:1px solid var(--br);border-radius:8px 0 0 8px;width:150px;font-weight:600;color:var(--p80)}.bars-table td:last-child{border-right:1px solid var(--br);border-radius:0 8px 8px 0}.contrast{display:grid;grid-template-columns:1fr 1fr;gap:12px}.contrast-col{border-radius:10px;border:1px solid var(--br);overflow:hidden;background:var(--sf2)}.contrast-hd{padding:8px 10px;font-size:12px;font-weight:600}.do-hd{background:var(--grbg);color:var(--gr)}.dont-hd{background:var(--rdbg);color:var(--rd)}.beh{font-size:12.5px;color:var(--t1);line-height:1.65;padding:8px 10px;border-radius:7px;background:var(--bg);margin:8px;border:1.5px solid transparent;outline:none;display:block;transition:all .15s;cursor:text}.beh:hover{border-color:var(--br);background:var(--sf)}.beh:focus{border-color:var(--p);background:var(--sf);box-shadow:0 0 0 3px var(--p10)}@media(max-width:900px){.collect-grid,.contrast{grid-template-columns:1fr}}
-</style></head>
+.collect-grid{display:grid;grid-template-columns:1fr 320px;gap:14px;margin-bottom:16px}.inc-card,.hint-card{background:var(--sf);border:1px solid var(--br);border-radius:12px;box-shadow:var(--sh);padding:14px 16px}.inc-card textarea{width:100%;min-height:142px;border:1.5px solid var(--br);border-radius:9px;padding:11px 12px;color:var(--t1);font-family:inherit;line-height:1.7;resize:vertical;outline:none}.inc-card textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--p10)}.hint-card h4{font-size:13px;color:var(--p80);margin-bottom:8px}.hint-card ul{padding-left:18px;color:var(--t2);font-size:12.5px;line-height:1.8}.check-panel{margin-top:10px;border:1px solid var(--br);border-radius:10px;background:var(--sf2);padding:10px 12px;display:none}.check-panel.show{display:block}.check-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.check-score{font-size:13px;font-weight:700;color:var(--p80)}.check-summary{font-size:12.5px;color:var(--t2);line-height:1.65}.check-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.check-chip{font-size:11.5px;border-radius:100px;padding:3px 8px;border:1px solid var(--br);background:var(--sf);color:var(--t2)}.check-chip.ok{background:var(--grbg);border-color:#86EFAC;color:var(--gr)}.check-chip.miss{background:var(--ambg);border-color:#FDE68A;color:var(--am)}.check-suggest{margin-top:8px;font-size:12px;color:var(--t2);line-height:1.7}.view-switch{display:flex;gap:8px;align-items:center;margin-bottom:14px}.view-switch button.active{background:var(--p);color:#fff;border-color:var(--p)}.anc-acc{display:flex;flex-direction:column;gap:11px}.anc-item{background:var(--sf);border-radius:12px;border:1.5px solid var(--br);box-shadow:var(--sh);overflow:hidden}.anc-hd{padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}.anc-hd:hover{background:var(--sf2)}.anc-chev{font-size:13px;color:var(--t3);transition:transform .2s;flex-shrink:0}.anc-chev.open{transform:rotate(90deg)}.anc-nm{font-size:14px;font-weight:600;flex:1;color:var(--t1)}.anc-bd{display:none;padding:0 16px 16px}.anc-bd.open{display:block}.event-line{font-size:12px;color:var(--t3);background:var(--sf2);border:1px solid var(--br);border-radius:8px;padding:8px 10px;margin-bottom:10px}.bars-table{width:100%;border-collapse:separate;border-spacing:0 7px}.bars-table th{text-align:left;font-size:12px;color:var(--p80);padding:4px 8px}.bars-table td{background:var(--bg);border-top:1px solid var(--br);border-bottom:1px solid var(--br);padding:9px 10px;font-size:12.5px;line-height:1.65;color:var(--t1)}.bars-table td:first-child{border-left:1px solid var(--br);border-radius:8px 0 0 8px;width:150px;font-weight:600;color:var(--p80)}.bars-table td:last-child{border-right:1px solid var(--br);border-radius:0 8px 8px 0}.contrast{display:grid;grid-template-columns:1fr 1fr;gap:12px}.contrast-col{border-radius:10px;border:1px solid var(--br);overflow:hidden;background:var(--sf2)}.contrast-hd{padding:8px 10px;font-size:12px;font-weight:600}.do-hd{background:var(--grbg);color:var(--gr)}.dont-hd{background:var(--rdbg);color:var(--rd)}.beh{font-size:12.5px;color:var(--t1);line-height:1.65;padding:8px 10px;border-radius:7px;background:var(--bg);margin:8px;border:1.5px solid transparent;outline:none;display:block;transition:all .15s;cursor:text}.beh:hover{border-color:var(--br);background:var(--sf)}.beh:focus{border-color:var(--p);background:var(--sf);box-shadow:0 0 0 3px var(--p10)}@media(max-width:900px){.collect-grid,.contrast{grid-template-columns:1fr}}
+</style>
+</head>
 <body>
 <header class="hdr"><a class="logo" href="index.html"><span class="logo-dot"></span>领导力建模智能体</a><nav class="prog"><a class="ps" href="step1.html"><div class="pd done">✓</div><span class="pl">信息采集</span></a><div class="pline done"></div><a class="ps" href="step2.html"><div class="pd done">✓</div><span class="pl">维度确认</span></a><div class="pline done"></div><a class="ps" href="step3.html"><div class="pd done">✓</div><span class="pl">描述建立</span></a><div class="pline done"></div><a class="ps" href="step4.html"><div class="pd active">4</div><span class="pl active">行为锚定</span></a><div class="pline"></div><a class="ps" href="step5.html"><div class="pd pending">5</div><span class="pl">总览导出</span></a></nav></header>
 <div class="step-bar"><div class="step-bar-track"><div class="step-bar-fill" style="width:80%"></div></div><span class="step-bar-label">步骤 4 / 5</span></div>
-<div class="main"><div class="lcard"><b>关键事件采集 + 行为锚定（M04）</b><p>先采集真实关键事件和行为素材，再输出两种可切换结果：BARS 五级行为描述、正负向行为对照。</p></div>
-<div class="collect-grid" id="collectArea"><div class="inc-card"><div class="sec-row" style="margin-bottom:8px"><div class="sec-t">真实关键事件与行为素材</div><div class="sec-s">用于生成更具体的行为描述</div></div><textarea id="incidentText" placeholder="请记录真实管理事件：背景、任务、行动、结果。"></textarea><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px"><button class="btn btn-o btn-sm" onclick="useSample()">填入示例</button><button class="btn btn-p btn-sm" onclick="generateAnchors()">生成行为描述</button></div></div><div class="hint-card"><h4>采集问题提示</h4><ul><li>描述一个表现突出的管理者关键事件。</li><li>描述一个表现不佳的管理事件。</li><li>说明事件中的对象、动作、结果和复盘结论。</li><li>素材越具体，描述越不容易模板化。</li></ul></div></div>
-<div id="loadingArea" class="ldg hidden"><div style="font-size:32px;margin-bottom:8px">✨</div><div class="ldots"><span></span><span></span><span></span></div><div style="font-size:13.5px;margin-top:4px">AI 正在生成五级行为描述与正负向对照…</div></div>
-<div id="contentArea" class="hidden"><div class="sec-row"><div><div class="sec-t">行为描述结果</div><div class="sec-s">前端可切换 BARS 五级行为描述 / 正负向行为对照</div></div></div><div class="view-switch"><button class="btn btn-o btn-sm active" id="barsBtn" onclick="setView('bars')">BARS 五级行为描述</button><button class="btn btn-o btn-sm" id="contrastBtn" onclick="setView('contrast')">正负向行为对照</button></div><div class="anc-acc" id="ancAcc"></div></div></div>
-<footer class="ftr"><a href="step3.html" class="btn btn-o">← 上一步</a><span class="step-info">步骤 4 / 5</span><button class="btn btn-p" id="nextBtn" onclick="goNext()" disabled>完成确认，查看总览 →</button></footer><div id="toast" class="toast"></div>
+
+<div class="main">
+  <div class="lcard"><b>关键事件采集 + 行为锚定（M04）</b><p>先采集真实关键事件和行为素材，并通过完整度校验确认背景、任务、行动、结果等关键信息，再生成 BARS 五级行为描述和正负向行为对照。</p></div>
+  <div class="collect-grid" id="collectArea">
+    <div class="inc-card">
+      <div class="sec-row" style="margin-bottom:8px"><div class="sec-t">真实关键事件与行为素材</div><div class="sec-s">用于生成更具体的行为描述</div></div>
+      <textarea id="incidentText" placeholder="请记录真实管理事件：背景、任务、行动、结果。建议同时提供一个正向事件和一个反向事件。"></textarea>
+      <div id="checkPanel" class="check-panel"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-o btn-sm" onclick="useSample()">填入示例</button>
+        <button class="btn btn-a btn-sm" id="checkBtn" onclick="checkIncidents(true)">AI校验完整度</button>
+        <button class="btn btn-p btn-sm" onclick="generateAnchors()">生成行为描述</button>
+      </div>
+    </div>
+    <div class="hint-card">
+      <h4>采集问题提示</h4>
+      <ul>
+        <li>背景：什么项目、业务场景或管理对象？</li>
+        <li>任务：当时目标、交付标准或时间节点是什么？</li>
+        <li>行动：管理者做了哪些可观察动作？</li>
+        <li>结果：带来什么结果、影响或复盘结论？</li>
+        <li>建议同时写正向事件和反向事件，五级区分度会更高。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="loadingArea" class="ldg hidden"><div style="font-size:32px;margin-bottom:8px">✨</div><div class="ldots"><span></span><span></span><span></span></div><div style="font-size:13.5px;margin-top:4px">正在生成五级行为描述与正负向对照…</div></div>
+  <div id="contentArea" class="hidden">
+    <div class="sec-row"><div><div class="sec-t">行为描述结果</div><div class="sec-s">可切换查看 BARS 五级行为描述和正负向行为对照</div></div></div>
+    <div class="view-switch"><button class="btn btn-o btn-sm active" id="barsBtn" onclick="setView('bars')">BARS 五级行为描述</button><button class="btn btn-o btn-sm" id="contrastBtn" onclick="setView('contrast')">正负向行为对照</button></div>
+    <div class="anc-acc" id="ancAcc"></div>
+  </div>
+</div>
+
+<footer class="ftr"><a href="step3.html" class="btn btn-o">← 上一步</a><span class="step-info">步骤 4 / 5</span><button class="btn btn-p" id="nextBtn" onclick="goNext()" disabled>完成确认，查看总览 →</button></footer>
+<div id="toast" class="toast"></div>
+
 <script>
-const API='/api';let anchors=[];let openMap={};let viewMode='bars';const savedDims=localStorage.getItem('lm_dims');const dims=savedDims?JSON.parse(savedDims):[];const savedDescs=localStorage.getItem('lm_descs');const descs=savedDescs?JSON.parse(savedDescs):[];const savedAnchors=localStorage.getItem('lm_anchors');if(savedAnchors){try{anchors=JSON.parse(savedAnchors)}catch(e){}}const savedIncidents=localStorage.getItem('lm_incidents')||'';
-function init(){document.getElementById('incidentText').value=savedIncidents;if(anchors.length)showContent()}
-function useSample(){document.getElementById('incidentText').value='正向事件：区域客户续约项目中，经理拆解客户风险清单，组织销售、交付、客户成功三方对齐责任边界，每周复盘进度，最终在合同到期前完成续约。\n反向事件：新产品上线延期时，经理只转发任务，没有澄清跨部门依赖和质量标准，导致交付返工。'}
-async function generateAnchors(){const incidentText=document.getElementById('incidentText').value.trim();localStorage.setItem('lm_incidents',incidentText);document.getElementById('loadingArea').classList.remove('hidden');document.getElementById('contentArea').classList.add('hidden');const companyInfo=localStorage.getItem('lm_company_info')||'';const level=companyInfo?(JSON.parse(companyInfo)['建模层级']||'中层管理者'):'中层管理者';const dimsWithDescs=dims.map(d=>({...d,description:(descs.find(dd=>dd.id===d.id)||{}).desc||''}));try{const resp=await fetch(`${API}/generate-anchors`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dimensions:dimsWithDescs,company_info:companyInfo,level,critical_incidents:incidentText})});const data=await resp.json();if(data.error)throw new Error(data.error);anchors=(Array.isArray(data.result)?data.result:[]).map(normalizeAnchor)}catch(err){console.error(err);anchors=dims.map(fallbackAnchor);showToast('AI生成失败，已使用本地模板兜底',true)}localStorage.setItem('lm_anchors',JSON.stringify(anchors));showContent()}
-function normalizeAnchor(a){const id=a.dimension_id||a.id;const nm=a.dimension_name||a.nm||a.name||(dims.find(d=>d.id===id)||{}).nm;const bars5=(a.bars5||[]).slice(0,5);return{id,nm,evidence_event:a.evidence_event||'基于已采集信息归纳',bars5:bars5.length?bars5:fallbackBars(nm),positive_behaviors:a.positive_behaviors||[],negative_behaviors:a.negative_behaviors||[]}}
-function fallbackBars(nm){return[5,4,3,2,1].map(n=>({level:`${n}分（${n===5?'卓越':n===4?'超出预期':n===3?'符合预期':n===2?'需改进':'不符合'}）`,text:`${n>=3?'拆解':'忽略'}「${nm}」相关场景${n>=3?'，明确对象、动作和结果标准并推进复盘':'，导致团队理解偏差或交付反复'}。`}))}
-function fallbackAnchor(d){const bars5=fallbackBars(d.nm);return{id:d.id,nm:d.nm,evidence_event:'本地兜底生成',bars5,positive_behaviors:[bars5[0].text,bars5[2].text],negative_behaviors:[bars5[3].text,bars5[4].text]}}
-function showContent(){document.getElementById('loadingArea').classList.add('hidden');document.getElementById('contentArea').classList.remove('hidden');document.getElementById('nextBtn').disabled=anchors.length===0;if(anchors.length&&!Object.keys(openMap).length)openMap[anchors[0].id]=true;render()}
-function setView(mode){viewMode=mode;document.getElementById('barsBtn').classList.toggle('active',mode==='bars');document.getElementById('contrastBtn').classList.toggle('active',mode==='contrast');render()}
-function render(){document.getElementById('ancAcc').innerHTML=anchors.map(a=>{const isOpen=openMap[a.id]||false;return`<div class="anc-item"><div class="anc-hd" onclick="toggle('${a.id}')"><span class="anc-chev ${isOpen?'open':''}">▶</span><span class="anc-nm">${a.nm}</span><span class="badge bg-gy">${viewMode==='bars'?'5档':'正负向'}</span></div><div class="anc-bd ${isOpen?'open':''}"><div class="event-line">关键事件来源：${a.evidence_event||'已采集信息'}</div>${viewMode==='bars'?renderBars(a):renderContrast(a)}</div></div>`}).join('')}
-function renderBars(a){return`<table class="bars-table"><thead><tr><th>水平分级</th><th>行为锚点描述</th></tr></thead><tbody>${a.bars5.map((r,i)=>`<tr><td>${r.level}</td><td><div class="beh" contenteditable="true" onblur="saveBar('${a.id}',${i},this.textContent)">${r.text}</div></td></tr>`).join('')}</tbody></table>`}
-function renderContrast(a){const pos=a.positive_behaviors&&a.positive_behaviors.length?a.positive_behaviors:[a.bars5[0].text,a.bars5[2].text];const neg=a.negative_behaviors&&a.negative_behaviors.length?a.negative_behaviors:[a.bars5[3].text,a.bars5[4].text];return`<div class="contrast"><div class="contrast-col"><div class="contrast-hd do-hd">正向行为</div>${pos.map((t,i)=>`<div class="beh" contenteditable="true" onblur="saveContrast('${a.id}','positive_behaviors',${i},this.textContent)">${t}</div>`).join('')}</div><div class="contrast-col"><div class="contrast-hd dont-hd">负向行为</div>${neg.map((t,i)=>`<div class="beh" contenteditable="true" onblur="saveContrast('${a.id}','negative_behaviors',${i},this.textContent)">${t}</div>`).join('')}</div></div>`}
-function toggle(id){openMap[id]=!openMap[id];render()}function saveBar(id,idx,text){const a=anchors.find(x=>x.id===id);if(a&&a.bars5[idx])a.bars5[idx].text=text.trim();localStorage.setItem('lm_anchors',JSON.stringify(anchors))}function saveContrast(id,key,idx,text){const a=anchors.find(x=>x.id===id);if(a&&a[key])a[key][idx]=text.trim();localStorage.setItem('lm_anchors',JSON.stringify(anchors))}function goNext(){localStorage.setItem('lm_anchors',JSON.stringify(anchors));window.location.href='step5.html'}function showToast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.style.background=err?'#991B1B':'#1A1520';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}init();
-</script></body></html>
+const API = '/api';
+let anchors = [];
+let openMap = {};
+let viewMode = 'bars';
+let incidentCheck = null;
+const savedDims = localStorage.getItem('lm_dims');
+const dims = savedDims ? JSON.parse(savedDims) : [];
+const savedDescs = localStorage.getItem('lm_descs');
+const descs = savedDescs ? JSON.parse(savedDescs) : [];
+const savedAnchors = localStorage.getItem('lm_anchors');
+if (savedAnchors) { try { anchors = JSON.parse(savedAnchors); } catch(e) {} }
+const savedIncidents = localStorage.getItem('lm_incidents') || '';
+const savedCheck = localStorage.getItem('lm_incident_check');
+if (savedCheck) { try { incidentCheck = JSON.parse(savedCheck); } catch(e) {} }
+
+function init() {
+  document.getElementById('incidentText').value = savedIncidents;
+  if (incidentCheck) renderCheck(incidentCheck);
+  if (anchors.length) showContent();
+}
+
+function parseCompanyInfo() {
+  try { return JSON.parse(localStorage.getItem('lm_company_info') || '{}'); }
+  catch(e) { return {}; }
+}
+
+function currentLevel() {
+  return parseCompanyInfo()['建模层级'] || '中层管理者';
+}
+
+function useSample() {
+  document.getElementById('incidentText').value = '正向事件：区域项目续约中，经理面对合同到期和交付投诉风险，拆解客户风险清单，组织销售、交付、客户成功三方对齐责任边界，每周复盘进度，最终在合同到期前完成续约。\n反向事件：新产品上线延期时，经理只转发任务，没有澄清跨部门依赖、质量标准和时间节点，问题暴露后才临时协调，导致交付返工并影响上线节奏。';
+  incidentCheck = null;
+  localStorage.removeItem('lm_incident_check');
+  document.getElementById('checkPanel').classList.remove('show');
+}
+
+async function checkIncidents(showOkToast) {
+  const incidentText = document.getElementById('incidentText').value.trim();
+  localStorage.setItem('lm_incidents', incidentText);
+  const btn = document.getElementById('checkBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '校验中…'; }
+  const companyInfo = localStorage.getItem('lm_company_info') || '';
+  const dimsWithDescs = dims.map(d => ({ ...d, description: (descs.find(dd => dd.id === d.id) || {}).desc || '' }));
+  try {
+    const resp = await fetch(`${API}/check-incidents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level: currentLevel(), critical_incidents: incidentText })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    incidentCheck = data.result;
+  } catch(err) {
+    incidentCheck = localIncidentCheck(incidentText);
+  }
+  incidentCheck.source_text = incidentText;
+  localStorage.setItem('lm_incident_check', JSON.stringify(incidentCheck));
+  renderCheck(incidentCheck);
+  if (btn) { btn.disabled = false; btn.textContent = 'AI校验完整度'; }
+  if (showOkToast) showToast(incidentCheck.can_generate ? '校验完成，可以生成行为描述' : '校验完成，请先补充缺口信息', !incidentCheck.can_generate);
+  return incidentCheck;
+}
+
+function localIncidentCheck(text) {
+  const rules = [
+    ['背景/场景', /背景|场景|项目|业务|客户|团队|上线|续约|交付/],
+    ['任务/目标', /目标|任务|要求|标准|指标|节点|交付|续约|上线/],
+    ['具体行动', /拆解|组织|协调|推动|复盘|澄清|设定|追踪|处理|对齐|识别/],
+    ['结果/影响', /结果|最终|导致|完成|延期|返工|提升|降低|达成|失败|投诉/],
+    ['正反样本', /正向|反向|表现突出|表现不佳|失败|延期|返工/]
+  ];
+  const checks = rules.map(([label, reg]) => ({ label, passed: reg.test(text) }));
+  const passed = checks.filter(c => c.passed).length;
+  const score = Math.round(passed / checks.length * 100);
+  return {
+    score, passed, total: checks.length, checks,
+    can_generate: score >= 60 && Boolean(text),
+    missing: checks.filter(c => !c.passed).map(c => c.label),
+    suggestions: checks.filter(c => !c.passed).map(c => `补充${c.label}信息。`),
+    summary: score >= 80 ? '关键事件信息基本完整，可以生成行为锚定。' : (score >= 60 ? '可以生成初稿，但建议继续补充缺口。' : '关键事件信息不足，建议先补充背景、任务、行动和结果。')
+  };
+}
+
+function renderCheck(result) {
+  const panel = document.getElementById('checkPanel');
+  if (!panel || !result) return;
+  const checks = result.checks || [];
+  panel.innerHTML = `<div class="check-head"><div class="check-score">AI校验：${result.score || 0} 分 · ${result.passed || 0}/${result.total || checks.length} 项完整</div><span class="badge ${result.can_generate ? 'bg-gr' : 'bg-am'}">${result.can_generate ? '可生成' : '需补充'}</span></div><div class="check-summary">${escHtml(result.summary || '')}</div><div class="check-list">${checks.map(c => `<span class="check-chip ${c.passed ? 'ok' : 'miss'}">${c.passed ? '✓' : '待补'} ${escHtml(c.label)}</span>`).join('')}</div>${result.suggestions && result.suggestions.length ? `<div class="check-suggest">建议：${result.suggestions.map(escHtml).join('；')}</div>` : ''}`;
+  panel.classList.add('show');
+}
+
+async function generateAnchors() {
+  const incidentText = document.getElementById('incidentText').value.trim();
+  localStorage.setItem('lm_incidents', incidentText);
+  if (!incidentText) {
+    showToast('请先填写关键事件素材', true);
+    return;
+  }
+  if (!incidentCheck || incidentCheck.source_text !== incidentText) {
+    const checked = await checkIncidents(false);
+    if (!checked.can_generate) {
+      showToast('关键信息不足，请先补充后再生成', true);
+      return;
+    }
+  }
+  document.getElementById('loadingArea').classList.remove('hidden');
+  document.getElementById('contentArea').classList.add('hidden');
+  const companyInfo = localStorage.getItem('lm_company_info') || '';
+  const dimsWithDescs = dims.map(d => ({ ...d, description: (descs.find(dd => dd.id === d.id) || {}).desc || '' }));
+  try {
+    const resp = await fetch(`${API}/generate-anchors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level: currentLevel(), critical_incidents: incidentText })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    anchors = (Array.isArray(data.result) ? data.result : []).map(normalizeAnchor);
+  } catch(err) {
+    console.error(err);
+    anchors = dims.map(fallbackAnchor);
+    showToast('生成失败，已使用本地模板兜底', true);
+  }
+  localStorage.setItem('lm_anchors', JSON.stringify(anchors));
+  showContent();
+}
+
+function normalizeAnchor(a) {
+  const id = a.dimension_id || a.id;
+  const nm = a.dimension_name || a.nm || a.name || (dims.find(d => d.id === id) || {}).nm;
+  const bars5 = ensureDistinctBars(nm, (a.bars5 || []).slice(0, 5));
+  return { id, nm, evidence_event: a.evidence_event || '基于已采集信息归纳', bars5, positive_behaviors: a.positive_behaviors || [], negative_behaviors: a.negative_behaviors || [] };
+}
+
+function scenarioFor(nm) {
+  const name = nm || '该维度';
+  if (/战略|规划|目标/.test(name)) return ['年度目标拆解和季度经营复盘', '业务、产品、交付等相关团队'];
+  if (/团队|赋能|人才|梯队/.test(name)) return ['成员成长任务和关键岗位接续', '团队成员和协作导师'];
+  if (/质量|流程|过程/.test(name)) return ['交付质量检查和流程改进', '交付、运营和质量接口人'];
+  if (/协作|沟通|影响|冲突/.test(name)) return ['跨部门项目协同和分歧处理', '上下游负责人和关键干系人'];
+  if (/数据|决策|商业/.test(name)) return ['指标分析和经营决策', '数据、业务和一线执行团队'];
+  if (/变革|创新|转型/.test(name)) return ['新机制落地和试点推广', '试点团队和受影响岗位'];
+  if (/风险|合规|安全/.test(name)) return ['业务风险预警和应急处理', '风险责任人和执行团队'];
+  return [`${name}相关管理场景`, '团队成员和关键协作方'];
+}
+
+function fallbackBars(nm) {
+  const [scene, actors] = scenarioFor(nm);
+  return [
+    { level: '5分（卓越）', text: `设计${scene}的目标拆解表、风险清单和复盘节奏，协调${actors}提前处理关键阻塞，并沉淀可复用机制。` },
+    { level: '4分（超出预期）', text: `预判${scene}中的主要依赖和风险，拉齐${actors}的交付标准，在节点偏差出现前完成资源调整。` },
+    { level: '3分（符合预期）', text: `按照既定计划推进${scene}，同步进度、处理常规问题，并在节点结束后完成复盘记录。` },
+    { level: '2分（需改进）', text: `等待问题暴露后才处理${scene}中的协作偏差，沟通对象和结果标准不清，造成返工或进度波动。` },
+    { level: '1分（不符合）', text: `放任${scene}缺少目标、责任人和检查节点，关键信息长期不透明，导致团队反复救火或交付失控。` }
+  ];
+}
+
+function ensureDistinctBars(nm, bars) {
+  if (!bars || bars.length < 5 || bars.some(r => !r.text || r.text.length < 18)) return fallbackBars(nm);
+  const compact = bars.map(r => String(r.text || '').replace(nm || '', '').replace(/[，。；：、,.!！?？\s]/g, ''));
+  if (new Set(compact).size < 4) return fallbackBars(nm);
+  return bars;
+}
+
+function fallbackAnchor(d) {
+  const bars5 = fallbackBars(d.nm);
+  return { id: d.id, nm: d.nm, evidence_event: '本地兜底生成', bars5, positive_behaviors: [bars5[0].text, bars5[2].text], negative_behaviors: [bars5[3].text, bars5[4].text] };
+}
+
+function showContent() {
+  document.getElementById('loadingArea').classList.add('hidden');
+  document.getElementById('contentArea').classList.remove('hidden');
+  document.getElementById('nextBtn').disabled = anchors.length === 0;
+  if (anchors.length && !Object.keys(openMap).length) openMap[anchors[0].id] = true;
+  render();
+}
+
+function setView(mode) {
+  viewMode = mode;
+  document.getElementById('barsBtn').classList.toggle('active', mode === 'bars');
+  document.getElementById('contrastBtn').classList.toggle('active', mode === 'contrast');
+  render();
+}
+
+function render() {
+  document.getElementById('ancAcc').innerHTML = anchors.map(a => {
+    const isOpen = openMap[a.id] || false;
+    return `<div class="anc-item"><div class="anc-hd" onclick="toggle('${a.id}')"><span class="anc-chev ${isOpen ? 'open' : ''}">▶</span><span class="anc-nm">${escHtml(a.nm)}</span><span class="badge bg-gy">${viewMode === 'bars' ? '5档' : '正负向'}</span></div><div class="anc-bd ${isOpen ? 'open' : ''}"><div class="event-line">关键事件来源：${escHtml(a.evidence_event || '已采集信息')}</div>${viewMode === 'bars' ? renderBars(a) : renderContrast(a)}</div></div>`;
+  }).join('');
+}
+
+function renderBars(a) {
+  return `<table class="bars-table"><thead><tr><th>水平分级</th><th>行为锚点描述</th></tr></thead><tbody>${a.bars5.map((r, i) => `<tr><td>${escHtml(r.level)}</td><td><div class="beh" contenteditable="true" onblur="saveBar('${a.id}',${i},this.textContent)">${escHtml(r.text)}</div></td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderContrast(a) {
+  const pos = a.positive_behaviors && a.positive_behaviors.length ? a.positive_behaviors : [a.bars5[0].text, a.bars5[2].text];
+  const neg = a.negative_behaviors && a.negative_behaviors.length ? a.negative_behaviors : [a.bars5[3].text, a.bars5[4].text];
+  return `<div class="contrast"><div class="contrast-col"><div class="contrast-hd do-hd">正向行为</div>${pos.map((t, i) => `<div class="beh" contenteditable="true" onblur="saveContrast('${a.id}','positive_behaviors',${i},this.textContent)">${escHtml(t)}</div>`).join('')}</div><div class="contrast-col"><div class="contrast-hd dont-hd">负向行为</div>${neg.map((t, i) => `<div class="beh" contenteditable="true" onblur="saveContrast('${a.id}','negative_behaviors',${i},this.textContent)">${escHtml(t)}</div>`).join('')}</div></div>`;
+}
+
+function toggle(id) { openMap[id] = !openMap[id]; render(); }
+function saveBar(id, idx, text) { const a = anchors.find(x => x.id === id); if (a && a.bars5[idx]) a.bars5[idx].text = text.trim(); localStorage.setItem('lm_anchors', JSON.stringify(anchors)); }
+function saveContrast(id, key, idx, text) { const a = anchors.find(x => x.id === id); if (a && a[key]) a[key][idx] = text.trim(); localStorage.setItem('lm_anchors', JSON.stringify(anchors)); }
+function goNext() { localStorage.setItem('lm_anchors', JSON.stringify(anchors)); window.location.href = 'step5.html'; }
+function escHtml(s) { const div = document.createElement('div'); div.textContent = s || ''; return div.innerHTML; }
+function showToast(msg, err) { const t = document.getElementById('toast'); t.textContent = msg; t.style.background = err ? '#991B1B' : '#1A1520'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2800); }
+init();
+</script>
+</body>
+</html>

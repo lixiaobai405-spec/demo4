@@ -228,9 +228,15 @@ function chatKD(e) {
 }
 
 async function chatSend(forceSummaryNow=false) {
-  if (chatBusy || collectionState !== 'collecting') return;
+  if (chatBusy || collectionState === 'confirmed') return;
   const ci = document.getElementById('ci');
   const t = ci.value.trim(); if (!t) return;
+  if (collectionState === 'summary_ready') {
+    collectionState = 'collecting';
+    summaryConfirmed = false;
+    document.getElementById('nextBtn').disabled = true;
+    renderSummary();
+  }
   ci.value = '';
   addMsg('user', t);
   const userTurns = chatMessages.filter(m => m.role === 'user').length;
@@ -287,7 +293,7 @@ async function chatSend(forceSummaryNow=false) {
 }
 
 async function requestSummary() {
-  if (chatBusy || collectionState !== 'collecting') return;
+  if (chatBusy || collectionState === 'confirmed') return;
   const ci = document.getElementById('ci');
   if (ci) ci.value = '请基于以上对话和上传文档生成摘要。';
   await chatSend(true);
@@ -330,7 +336,7 @@ function renderSummary() {
     </div>`;
   }
   if (collectionState === 'summary_ready') {
-    html += `<div class="summary-action"><button class="btn btn-p btn-sm" onclick="confirmSummary()">确认摘要</button></div>`;
+    html += `<div class="summary-action" style="gap:8px"><button class="btn btn-o btn-sm" onclick="continueCollection()">继续补充</button><button class="btn btn-p btn-sm" onclick="confirmSummary()">确认摘要</button></div>`;
   }
   bd.innerHTML = html;
 
@@ -349,6 +355,16 @@ function renderSummary() {
     cb.innerHTML = '✅ 摘要已确认，点击右下角进入下一步';
     rp.insertBefore(cb, rp.firstChild);
   }
+}
+
+function continueCollection() {
+  if (!summaryData) return;
+  collectionState = 'collecting';
+  summaryConfirmed = false;
+  document.getElementById('nextBtn').disabled = true;
+  renderSummary();
+  updateInteractionState();
+  saveState();
 }
 
 function confirmSummary() {
@@ -500,18 +516,16 @@ function updateInteractionState() {
   const ci = document.getElementById('ci');
   const sendBtn = document.getElementById('sendBtn');
   const summaryBtn = document.getElementById('summaryBtn');
-  const locked = collectionState !== 'collecting';
+  const locked = collectionState === 'confirmed';
   if (ci) {
-    ci.disabled = true;
     ci.disabled = locked || chatBusy;
-    ci.placeholder = collectionState === 'confirmed' ? '摘要已确认' : (collectionState === 'summary_ready' ? '请先确认右侧摘要' : '输入您的回答，按 Enter 发送…');
+    ci.placeholder = collectionState === 'confirmed' ? '摘要已确认' : (collectionState === 'summary_ready' ? '摘要已生成，可继续补充或确认' : '输入您的回答，按 Enter 发送…');
   }
   if (sendBtn) {
-    sendBtn.disabled = true;
     sendBtn.disabled = locked || chatBusy;
   }
   if (summaryBtn) {
-    summaryBtn.disabled = true;
+    summaryBtn.textContent = collectionState === 'summary_ready' ? '更新摘要' : '生成摘要';
     summaryBtn.disabled = locked || chatBusy || chatMessages.filter(m => m.role === 'user').length === 0;
   }
 }

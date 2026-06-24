@@ -42,8 +42,11 @@
 .beh-bl { background: var(--rdbg); border-color: var(--rd); color: #3B1010; }
 .framework-viz { display: grid; grid-template-columns: minmax(180px,1fr) minmax(320px,480px) minmax(180px,1fr); gap: 16px; align-items: center; margin-bottom: 22px; }
 .dim-side { display: flex; flex-direction: column; gap: 9px; }
+.dim-side-title { font-size: 12px; font-weight: 700; color: var(--p80); margin-bottom: 2px; padding-left: 2px; }
 .dim-pill { background: var(--sf); border: 1px solid var(--br); border-radius: 8px; padding: 9px 11px; box-shadow: var(--sh); cursor: pointer; transition: all .15s; }
 .dim-pill:hover { border-color: var(--p); background: var(--p10); }
+.dim-pill.active { border-color: var(--p); background: var(--p10); box-shadow: 0 0 0 3px var(--p10); }
+.framework-hint { margin: -10px 0 20px; font-size: 12.5px; color: var(--t2); text-align: center; }
 .dim-pill-nm { font-size: 13px; font-weight: 600; color: var(--t1); }
 .dim-pill-src { font-size: 11px; color: var(--t3); margin-top: 2px; }
 .radar-wrap { max-width: 480px; margin: 0 auto; padding: 16px; background: var(--sf); border-radius: 12px; border: 1px solid var(--br); box-shadow: var(--sh); }
@@ -119,6 +122,7 @@
       </div>
       <div class="dim-side right" id="dimSideRight"></div>
     </div>
+    <div class="framework-hint">左右两侧列出全部维度，点击任一维度可在下方展开对应描述和行为锚定。</div>
 
     <div class="sec-row">
       <div class="sec-t">完整模型总览</div>
@@ -155,6 +159,8 @@ const savedAnchors = localStorage.getItem('lm_anchors');
 const anchors = savedAnchors ? JSON.parse(savedAnchors) : [];
 
 let openMap = {};
+let selectedDimId = dims[0]?.id || null;
+let radarChartInstance = null;
 
 function init() {
   if (dims.length === 0) {
@@ -219,7 +225,7 @@ function init() {
 }
 
 function togOv(id) { openMap[id] = !openMap[id]; init(); }
-function expandAll() { anchors.forEach(a => openMap[a.id] = true); init(); }
+function expandAll() { dims.forEach(d => openMap[d.id] = true); init(); }
 function collapseAll() { openMap = {}; init(); }
 
 async function doExport(type) {
@@ -348,15 +354,16 @@ function renderFramework(data) {
   const left = document.getElementById('dimSideLeft');
   const right = document.getElementById('dimSideRight');
   const midpoint = Math.ceil(data.length / 2);
-  const buildPills = items => items.map(d => {
+  if (!selectedDimId && data.length) selectedDimId = data[0].id;
+  const buildPills = (items, title) => `<div class="dim-side-title">${title}</div>` + items.map(d => {
     const dim = dims.find(dd => dd.id === d.id) || d;
-    return `<div class="dim-pill" onclick="focusDim('${d.id}')">
+    return `<div class="dim-pill ${selectedDimId === d.id ? 'active' : ''}" onclick="focusDim('${d.id}')">
       <div class="dim-pill-nm">${d.nm}</div>
       <div class="dim-pill-src">${dimSourceLabel(dim)}</div>
     </div>`;
   }).join('');
-  if (left) left.innerHTML = buildPills(data.slice(0, midpoint));
-  if (right) right.innerHTML = buildPills(data.slice(midpoint));
+  if (left) left.innerHTML = buildPills(data.slice(0, midpoint), `左侧维度（${data.slice(0, midpoint).length}个）`);
+  if (right) right.innerHTML = buildPills(data.slice(midpoint), `右侧维度（${data.slice(midpoint).length}个）`);
   renderRadar(data);
 }
 
@@ -375,7 +382,8 @@ function renderRadar(data) {
   canvas.style.display = 'block';
 
   const ctx = canvas.getContext('2d');
-  new Chart(ctx, {
+  if (radarChartInstance) radarChartInstance.destroy();
+  radarChartInstance = new Chart(ctx, {
     type: 'radar',
     data: {
       labels: data.map(d => d.nm),
@@ -432,10 +440,9 @@ function renderRadar(data) {
 }
 
 function focusDim(id) {
-  if (!openMap[id]) {
-    openMap[id] = true;
-    init();
-  }
+  selectedDimId = id;
+  openMap[id] = true;
+  init();
   setTimeout(() => {
     const target = document.querySelector(`[data-dim="${id}"]`);
     if (target) {

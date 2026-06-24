@@ -19,6 +19,7 @@ from backend.ai_service import (
     generate_anchors,
     regenerate_item,
     generate_with_audit,
+    check_critical_incidents,
     LLMError,
     STEP2_GUIDANCE,
     STEP3_GUIDANCE,
@@ -203,6 +204,18 @@ def api_generate_descriptions():
 
 
 # ── Step4: Anchors ────────────────────────────────────────────
+
+@app.route("/api/check-incidents", methods=["POST"])
+def api_check_incidents():
+    data = request.get_json() or {}
+    result = check_critical_incidents(
+        data.get("critical_incidents", ""),
+        data.get("dimensions", []),
+        data.get("company_info", ""),
+        data.get("level", "中层管理者"),
+    )
+    return jsonify({"result": result})
+
 
 @app.route("/api/generate-anchors", methods=["POST"])
 def api_generate_anchors():

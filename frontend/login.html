@@ -56,7 +56,7 @@
   <div class="auth-container">
     <div class="auth-card">
       <h2 id="authTitle">登录</h2>
-      <p class="subtitle" id="authSubtitle">登录以保存您的建模记录</p>
+      <p class="subtitle" id="authSubtitle">登录仅用于保存记录；不登录也可直接建模</p>
 
       <div class="error-msg" id="errorMsg"></div>
 
@@ -82,6 +82,7 @@
     </div>
     <div class="back-link">
       <a href="index.html" class="btn btn-o">← 返回首页</a>
+      <a href="step1.html" class="btn btn-p" style="margin-left:8px">跳过登录，直接开始 →</a>
     </div>
   </div>
 </div>
@@ -95,7 +96,7 @@ let isRegister = false;
 function toggleMode() {
   isRegister = !isRegister;
   document.getElementById('authTitle').textContent = isRegister ? '注册' : '登录';
-  document.getElementById('authSubtitle').textContent = isRegister ? '创建账号以保存建模记录' : '登录以查看您的建模记录';
+  document.getElementById('authSubtitle').textContent = isRegister ? '创建账号以保存建模记录（可选）' : '登录仅用于保存记录；不登录也可直接建模';
   document.getElementById('nameGroup').style.display = isRegister ? 'block' : 'none';
   document.getElementById('submitBtn').textContent = isRegister ? '注册' : '登录';
   document.getElementById('switchText').textContent = isRegister ? '已有账号？' : '还没有账号？';

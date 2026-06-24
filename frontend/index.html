@@ -50,7 +50,7 @@
     <a class="sc" href="step4.html">
       <div class="sc-num">4</div>
       <h3>行为锚定</h3>
-      <p>BARS 三档行为描述（优秀/达标/不达标）</p>
+      <p>BARS 五级行为描述与正负向行为对照</p>
     </a>
     <a class="sc" href="step5.html">
       <div class="sc-num">5</div>
@@ -61,11 +61,11 @@
 
   <div class="action-area">
     <div id="userBar" style="margin-bottom:18px;font-size:13px;color:var(--t2)">
-      <span id="userGreeting"></span>
+      <span id="userGreeting">访客模式已启用，可直接进入完整流程</span>
       <span id="userActions"></span>
     </div>
-    <button class="btn btn-p btn-lg" onclick="location.href='step1.html'">开始建模 →</button>
-    <p style="margin-top:10px;font-size:12px;color:var(--t3)">或点击上方卡片直接跳转到任意步骤</p>
+    <button class="btn btn-p btn-lg" onclick="location.href='step1.html'">直接开始建模 →</button>
+    <p style="margin-top:10px;font-size:12px;color:var(--t3)">无需注册登录；也可点击上方卡片直接跳转到任意步骤</p>
   </div>
 </div>
 
@@ -87,8 +87,8 @@ const API = '/api';
       actions.innerHTML = `<button class="btn btn-g btn-sm" onclick="logout()">退出登录</button>`;
     } else {
       localStorage.removeItem('lm_user');
-      bar.innerHTML = '未登录';
-      actions.innerHTML = `<a href="login.html" class="btn btn-o btn-sm">登录 / 注册</a>`;
+      bar.innerHTML = '访客模式已启用，可直接进入完整流程';
+      actions.innerHTML = `<a href="login.html" class="btn btn-o btn-sm">登录（可选）</a>`;
     }
   } catch(e) {
     bar.textContent = '';
