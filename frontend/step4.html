@@ -18,6 +18,7 @@
   <div class="collect-grid" id="collectArea">
     <div class="inc-card">
       <div class="sec-row" style="margin-bottom:8px"><div class="sec-t">真实关键事件与行为素材</div><div class="sec-s">用于生成更具体的行为描述</div></div>
+      <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:600;color:var(--p80);margin-bottom:5px">这个事件主要对应哪个领导力维度？</label><select id="incidentDimension" onchange="saveIncidentDimension()" style="width:100%;border:1.5px solid var(--br);border-radius:9px;padding:9px 10px;color:var(--t1);font-family:inherit;background:var(--sf)"></select><div style="font-size:11.5px;color:var(--t3);margin-top:5px">如果只录入某一个维度的事件，请先选中对应维度，系统会优先把该事件用于这个维度。</div></div>
       <textarea id="incidentText" placeholder="请记录真实管理事件：背景、任务、行动、结果。可以只填写某一个领导力维度的正反样例；系统不会把该样例套用到全部维度。"></textarea>
       <div id="checkPanel" class="check-panel"></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -63,10 +64,12 @@ const descs = savedDescs ? JSON.parse(savedDescs) : [];
 const savedAnchors = localStorage.getItem('lm_anchors');
 if (savedAnchors) { try { anchors = JSON.parse(savedAnchors); } catch(e) {} }
 const savedIncidents = localStorage.getItem('lm_incidents') || '';
+const savedIncidentDimension = localStorage.getItem('lm_incident_dimension') || '';
 const savedCheck = localStorage.getItem('lm_incident_check');
 if (savedCheck) { try { incidentCheck = JSON.parse(savedCheck); } catch(e) {} }
 
 function init() {
+  renderIncidentDimensionOptions();
   document.getElementById('incidentText').value = savedIncidents;
   if (incidentCheck) renderCheck(incidentCheck);
   if (anchors.length) showContent();
@@ -81,6 +84,34 @@ function currentLevel() {
   return parseCompanyInfo()['建模层级'] || '中层管理者';
 }
 
+function renderIncidentDimensionOptions() {
+  const sel = document.getElementById('incidentDimension');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">请选择事件对应的领导力维度</option>' + dims.map(d => `<option value="${escHtml(d.id)}">${escHtml(d.nm || d.name || d.id)}</option>`).join('');
+  if (savedIncidentDimension && dims.some(d => d.id === savedIncidentDimension)) sel.value = savedIncidentDimension;
+}
+
+function saveIncidentDimension() {
+  const sel = document.getElementById('incidentDimension');
+  localStorage.setItem('lm_incident_dimension', sel ? sel.value : '');
+  incidentCheck = null;
+  localStorage.removeItem('lm_incident_check');
+}
+
+function selectedIncidentDimension() {
+  const sel = document.getElementById('incidentDimension');
+  const dimId = sel ? sel.value : '';
+  const dim = dims.find(d => d.id === dimId);
+  return dim ? { id: dim.id, name: dim.nm || dim.name || dim.id } : null;
+}
+
+function criticalIncidentPayloadText() {
+  const text = document.getElementById('incidentText').value.trim();
+  const dim = selectedIncidentDimension();
+  if (!dim) return text;
+  return `【事件对应领导力维度】${dim.name}（${dim.id}）\n${text}`;
+}
+
 function useSample() {
   document.getElementById('incidentText').value = '单维度填写示例：以下只对应一个领导力维度（如客户协同/跨部门协作），不是所有维度的通用行为描述。\n正向事件：区域项目续约中，经理面对合同到期和交付投诉风险，拆解客户风险清单，组织销售、交付、客户成功三方对齐责任边界，每周复盘进度，最终在合同到期前完成续约。\n反向事件：新产品上线延期时，经理只转发任务，没有澄清跨部门依赖、质量标准和时间节点，问题暴露后才临时协调，导致交付返工并影响上线节奏。';
   incidentCheck = null;
@@ -90,6 +121,7 @@ function useSample() {
 
 async function checkIncidents(showOkToast) {
   const incidentText = document.getElementById('incidentText').value.trim();
+  const payloadText = criticalIncidentPayloadText();
   localStorage.setItem('lm_incidents', incidentText);
   const btn = document.getElementById('checkBtn');
   if (btn) { btn.disabled = true; btn.textContent = '校验中…'; }
@@ -99,7 +131,7 @@ async function checkIncidents(showOkToast) {
     const resp = await fetch(`${API}/check-incidents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level: currentLevel(), critical_incidents: incidentText })
+      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level: currentLevel(), critical_incidents: payloadText })
     });
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
@@ -107,7 +139,7 @@ async function checkIncidents(showOkToast) {
   } catch(err) {
     incidentCheck = localIncidentCheck(incidentText);
   }
-  incidentCheck.source_text = incidentText;
+  incidentCheck.source_text = payloadText;
   localStorage.setItem('lm_incident_check', JSON.stringify(incidentCheck));
   renderCheck(incidentCheck);
   if (btn) { btn.disabled = false; btn.textContent = 'AI校验完整度'; }
@@ -145,12 +177,13 @@ function renderCheck(result) {
 
 async function generateAnchors() {
   const incidentText = document.getElementById('incidentText').value.trim();
+  const payloadText = criticalIncidentPayloadText();
   localStorage.setItem('lm_incidents', incidentText);
   if (!incidentText) {
     showToast('请先填写关键事件素材', true);
     return;
   }
-  if (!incidentCheck || incidentCheck.source_text !== incidentText) {
+  if (!incidentCheck || incidentCheck.source_text !== payloadText) {
     const checked = await checkIncidents(false);
     if (!checked.can_generate) {
       showToast('关键信息不足，请先补充后再生成', true);
@@ -165,7 +198,7 @@ async function generateAnchors() {
     const resp = await fetch(`${API}/generate-anchors`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level: currentLevel(), critical_incidents: incidentText })
+      body: JSON.stringify({ dimensions: dimsWithDescs, company_info: companyInfo, level: currentLevel(), critical_incidents: payloadText })
     });
     const data = await resp.json();
     if (data.error) throw new Error(data.error);

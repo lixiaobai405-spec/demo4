@@ -59,6 +59,10 @@ def test_step4_marks_sample_as_single_dimension_only():
     assert "填入单维度示例" in html
     assert "可以只填写某一个领导力维度" in html
     assert "不是所有维度的通用" in html
+    assert "这个事件主要对应哪个领导力维度" in html
+    assert "lm_incident_dimension" in html
+    assert "criticalIncidentPayloadText" in html
+    assert "【事件对应领导力维度】" in html
     assert "关键事件来源" not in html
 
 
