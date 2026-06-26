@@ -168,6 +168,32 @@ def test_build_docx_contains_m05_sections_and_real_anchor_tables():
     assert "提前识别跨部门依赖冲突" in table_text
 
 
+def test_build_docx_uses_pdf_like_typography_and_table_styles():
+    """DOCX 导出应使用接近 PDF 的段落层级、页边距和表格视觉样式。"""
+    content = build_docx_bytes(_sample_model())
+
+    with ZipFile(BytesIO(content)) as zf:
+        document_xml = zf.read("word/document.xml").decode("utf-8")
+        styles_xml = zf.read("word/styles.xml").decode("utf-8")
+
+    assert '<w:pgMar w:top="907" w:right="1020" w:bottom="907" w:left="1020"' in document_xml
+    assert '<w:docDefaults>' in styles_xml
+    assert 'w:styleId="BodyText"' in styles_xml
+    assert '<w:spacing w:after="240" w:line="380" w:lineRule="exact"/>' in styles_xml
+    assert '<w:pPr><w:pStyle w:val="BodyText"/><w:spacing w:before="0" w:after="240" w:line="380" w:lineRule="exact"/></w:pPr>' in document_xml
+    assert '<w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="exact"/>' in document_xml
+    assert '<w:spacing w:before="0" w:after="240" w:line="240" w:lineRule="exact"/>' in document_xml
+    assert '<w:spacing w:before="320" w:after="180" w:line="420" w:lineRule="exact"/>' in styles_xml
+    assert '<w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:before="320" w:after="180" w:line="420" w:lineRule="exact"/></w:pPr>' in document_xml
+    assert '<w:spacing w:before="280" w:after="140" w:line="380" w:lineRule="exact"/>' in styles_xml
+    assert '<w:pPr><w:pStyle w:val="Heading2"/><w:spacing w:before="280" w:after="140" w:line="380" w:lineRule="exact"/></w:pPr>' in document_xml
+    assert '<w:jc w:val="center"/>' in styles_xml
+    assert '<w:tblLayout w:type="fixed"/>' in document_xml
+    assert '<w:shd w:val="clear" w:fill="F4ECF4"/>' in document_xml
+    assert '<w:color w:val="4A1550"/>' in document_xml
+    assert '<w:vAlign w:val="center"/>' in document_xml
+
+
 def test_build_pdf_contains_m05_sections():
     """PDF 导出应复用同一套 M05 内容大纲，并返回有效 PDF 二进制"""
     outline = build_export_outline(_sample_model())

@@ -78,3 +78,21 @@ def test_step5_uses_framework_layout_without_weight_language():
     assert "权重" not in html
     assert "5/5" not in html
     assert "优先级总览" not in html
+
+
+def test_login_page_does_not_offer_guest_entry():
+    html = _read_frontend("login.html")
+
+    assert "跳过登录" not in html
+    assert "不登录也可直接建模" not in html
+    assert "请登录后使用" in html
+
+
+def test_index_page_does_not_offer_guest_mode_entry():
+    html = _read_frontend("index.html")
+
+    assert "访客模式" not in html
+    assert "登录（可选）" not in html
+    assert "直接开始建模" not in html
+    assert "无需注册登录" not in html
+    assert "请登录后使用" in html
