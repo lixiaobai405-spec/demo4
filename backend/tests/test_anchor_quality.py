@@ -87,3 +87,40 @@ def test_generate_anchors_prompt_limits_sample_to_one_dimension(monkeypatch):
     assert "填写示例只代表某一个单一领导力维度" in prompt
     assert "不能当成所有维度的通用内容" in prompt
     assert "只属于该维度的正向/负向行为" in prompt
+    assert "BARS 和正负向行为是两种不同产物" in prompt
+    assert "禁止把 BARS 的5/4/3分直接改写成正向行为" in prompt
+
+
+def test_rule_based_contrast_is_not_built_from_bars():
+    from backend.ai_service import build_rule_based_anchors
+
+    anchors = build_rule_based_anchors([
+        {"id": "D1", "name": "客户协同"},
+    ], "【事件对应领导力维度】客户协同（D1）\n经理推动续约。")
+
+    item = anchors[0]
+    bars_texts = {row["text"] for row in item["bars5"]}
+    assert item["positive_behaviors"]
+    assert item["negative_behaviors"]
+    assert not any(text in bars_texts for text in item["positive_behaviors"])
+    assert not any(text in bars_texts for text in item["negative_behaviors"])
+
+
+def test_normalize_anchor_generates_independent_contrast_when_missing():
+    from backend.ai_service import normalize_anchor_item
+
+    item = normalize_anchor_item({
+        "dimension_id": "D1",
+        "dimension_name": "客户协同",
+        "bars5": [
+            {"level": "5分", "text": "设计客户协同的目标拆解表、风险清单和复盘节奏，协调相关团队提前处理关键阻塞。"},
+            {"level": "4分", "text": "预判客户协同中的主要依赖和风险，拉齐相关团队交付标准。"},
+            {"level": "3分", "text": "按照既定计划推进客户协同，定期同步进度并处理常规问题。"},
+            {"level": "2分", "text": "等待问题暴露后才处理客户协同偏差，造成返工或进度波动。"},
+            {"level": "1分", "text": "放任客户协同缺少目标、责任人和检查节点，导致交付失控。"},
+        ],
+    })
+
+    bars_texts = {row["text"] for row in item["bars5"]}
+    assert not any(text in bars_texts for text in item["positive_behaviors"])
+    assert not any(text in bars_texts for text in item["negative_behaviors"])
