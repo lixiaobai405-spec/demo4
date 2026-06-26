@@ -605,6 +605,7 @@ def _document_xml(blocks):
     for block in blocks:
         if block["type"] == "table":
             body_parts.append(_table_xml(block["rows"]))
+            body_parts.append(_spacer_para_xml(240))
         else:
             body_parts.append(_para_xml(block["type"], block.get("text", "")))
     body = "".join(body_parts)
@@ -613,15 +614,39 @@ def _document_xml(blocks):
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
         f"<w:body>{body}"
         '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>'
-        '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>'
+        '<w:pgMar w:top="907" w:right="1020" w:bottom="907" w:left="1020" w:header="708" w:footer="708" w:gutter="0"/>'
         "</w:sectPr></w:body></w:document>"
     )
 
 
 def _para_xml(style, text):
-    style_id = {"title": "Title", "heading": "Heading1", "subheading": "Heading2"}.get(style)
-    ppr = f'<w:pPr><w:pStyle w:val="{style_id}"/></w:pPr>' if style_id else ""
+    style_id = {
+        "title": "Title",
+        "heading": "Heading1",
+        "subheading": "Heading2",
+        "body": "BodyText",
+    }.get(style)
+    spacing = _docx_spacing_xml(style)
+    ppr = f'<w:pPr><w:pStyle w:val="{style_id}"/>{spacing}</w:pPr>' if style_id else ""
     return f"<w:p>{ppr}<w:r>{_text_xml(text)}</w:r></w:p>"
+
+
+def _spacer_para_xml(after_twips):
+    return (
+        "<w:p><w:pPr>"
+        f'<w:spacing w:before="0" w:after="{after_twips}" w:line="{after_twips}" w:lineRule="exact"/>'
+        "</w:pPr></w:p>"
+    )
+
+
+def _docx_spacing_xml(style):
+    before, after, line = {
+        "title": ("160", "320", "520"),
+        "heading": ("320", "180", "420"),
+        "subheading": ("280", "140", "380"),
+        "body": ("0", "240", "380"),
+    }.get(style, ("0", "240", "380"))
+    return f'<w:spacing w:before="{before}" w:after="{after}" w:line="{line}" w:lineRule="exact"/>'
 
 
 def _text_xml(text):
@@ -634,10 +659,12 @@ def _text_xml(text):
 
 
 def _table_xml(rows):
-    row_xml = "".join(_tr_xml(row) for row in rows)
+    row_xml = "".join(_tr_xml(row, idx) for idx, row in enumerate(rows))
     return (
         "<w:tbl>"
         '<w:tblPr><w:tblW w:w="9360" w:type="dxa"/>'
+        '<w:jc w:val="left"/>'
+        '<w:tblLayout w:type="fixed"/>'
         "<w:tblBorders>"
         '<w:top w:val="single" w:sz="6" w:space="0" w:color="D0C0D3"/>'
         '<w:left w:val="single" w:sz="6" w:space="0" w:color="D0C0D3"/>'
@@ -653,15 +680,23 @@ def _table_xml(rows):
     )
 
 
-def _tr_xml(row):
-    return "<w:tr>" + "".join(_tc_xml(cell, idx) for idx, cell in enumerate(row)) + "</w:tr>"
+def _tr_xml(row, row_idx=0):
+    is_header = row_idx == 0
+    return "<w:tr>" + "".join(_tc_xml(cell, idx, is_header) for idx, cell in enumerate(row)) + "</w:tr>"
 
 
-def _tc_xml(text, idx):
+def _tc_xml(text, idx, is_header=False):
     width = "1600" if idx == 0 else "7760"
+    shading = '<w:shd w:val="clear" w:fill="F4ECF4"/>' if is_header else ""
+    run_props = (
+        '<w:rPr><w:b/><w:color w:val="4A1550"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr>'
+        if is_header
+        else '<w:rPr><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr>'
+    )
     return (
-        f'<w:tc><w:tcPr><w:tcW w:w="{width}" w:type="dxa"/></w:tcPr>'
-        f"<w:p><w:r>{_text_xml(text)}</w:r></w:p></w:tc>"
+        f'<w:tc><w:tcPr><w:tcW w:w="{width}" w:type="dxa"/>{shading}<w:vAlign w:val="center"/></w:tcPr>'
+        '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="exact"/></w:pPr>'
+        f"<w:r>{run_props}{_text_xml(text)}</w:r></w:p></w:tc>"
     )
 
 
@@ -690,8 +725,11 @@ def _styles_xml():
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-        '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style>'
-        '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style>'
-        '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>'
+        '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="宋体" w:cs="Arial"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr></w:rPrDefault></w:docDefaults>'
+        '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:pPr><w:spacing w:after="240" w:line="380" w:lineRule="exact"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="宋体" w:cs="Arial"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr></w:style>'
+        '<w:style w:type="paragraph" w:styleId="BodyText"><w:name w:val="Body Text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="240" w:line="380" w:lineRule="exact"/></w:pPr><w:rPr><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:pPr><w:jc w:val="center"/><w:spacing w:before="160" w:after="320" w:line="520" w:lineRule="exact"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="宋体" w:cs="Arial"/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="320" w:after="180" w:line="420" w:lineRule="exact"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style>'
+        '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="280" w:after="140" w:line="380" w:lineRule="exact"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style>'
         "</w:styles>"
     )

@@ -32,27 +32,27 @@
   </div>
 
   <div class="step-cards">
-    <a class="sc" href="step1.html">
+    <a class="sc step-link" href="login.html" data-step-href="step1.html">
       <div class="sc-num">1</div>
       <h3>信息采集</h3>
       <p>AI 引导对话收集企业背景，支持上传参考文档</p>
     </a>
-    <a class="sc" href="step2.html">
+    <a class="sc step-link" href="login.html" data-step-href="step2.html">
       <div class="sc-num">2</div>
       <h3>维度确认</h3>
       <p>AI 生成领导力维度框架，可增删改确认</p>
     </a>
-    <a class="sc" href="step3.html">
+    <a class="sc step-link" href="login.html" data-step-href="step3.html">
       <div class="sc-num">3</div>
       <h3>描述建立</h3>
       <p>为每个维度生成定位描述，含质检提示</p>
     </a>
-    <a class="sc" href="step4.html">
+    <a class="sc step-link" href="login.html" data-step-href="step4.html">
       <div class="sc-num">4</div>
       <h3>行为锚定</h3>
       <p>BARS 五级行为描述与正负向行为对照</p>
     </a>
-    <a class="sc" href="step5.html">
+    <a class="sc step-link" href="login.html" data-step-href="step5.html">
       <div class="sc-num">5</div>
       <h3>总览导出</h3>
       <p>查看完整模型，导出文档</p>
@@ -61,11 +61,11 @@
 
   <div class="action-area">
     <div id="userBar" style="margin-bottom:18px;font-size:13px;color:var(--t2)">
-      <span id="userGreeting">访客模式已启用，可直接进入完整流程</span>
-      <span id="userActions"></span>
+      <span id="userGreeting">请登录后使用完整建模流程</span>
+      <span id="userActions"><a href="login.html" class="btn btn-o btn-sm">登录</a></span>
     </div>
-    <button class="btn btn-p btn-lg" onclick="location.href='step1.html'">直接开始建模 →</button>
-    <p style="margin-top:10px;font-size:12px;color:var(--t3)">无需注册登录；也可点击上方卡片直接跳转到任意步骤</p>
+    <button id="startBtn" class="btn btn-p btn-lg" onclick="location.href='login.html'">登录后开始建模 →</button>
+    <p style="margin-top:10px;font-size:12px;color:var(--t3)">请登录后使用完整流程</p>
   </div>
 </div>
 
@@ -78,20 +78,36 @@ const API = '/api';
 (async () => {
   const bar = document.getElementById('userGreeting');
   const actions = document.getElementById('userActions');
+  const startBtn = document.getElementById('startBtn');
+  const stepLinks = document.querySelectorAll('.step-link');
+  const lockGuestEntry = () => {
+    stepLinks.forEach(link => { link.href = 'login.html'; });
+    startBtn.textContent = '登录后开始建模 →';
+    startBtn.onclick = () => { location.href = 'login.html'; };
+  };
+  const unlockUserEntry = () => {
+    stepLinks.forEach(link => { link.href = link.dataset.stepHref; });
+    startBtn.textContent = '开始建模 →';
+    startBtn.onclick = () => { location.href = 'step1.html'; };
+  };
   try {
     const resp = await fetch(`${API}/auth/me`);
     const data = await resp.json();
     if (data.user) {
       localStorage.setItem('lm_user', JSON.stringify(data.user));
+      unlockUserEntry();
       bar.innerHTML = `👤 ${data.user.display_name}（${data.user.email}）`;
       actions.innerHTML = `<button class="btn btn-g btn-sm" onclick="logout()">退出登录</button>`;
     } else {
       localStorage.removeItem('lm_user');
-      bar.innerHTML = '访客模式已启用，可直接进入完整流程';
-      actions.innerHTML = `<a href="login.html" class="btn btn-o btn-sm">登录（可选）</a>`;
+      lockGuestEntry();
+      bar.innerHTML = '请登录后使用完整建模流程';
+      actions.innerHTML = `<a href="login.html" class="btn btn-o btn-sm">登录</a>`;
     }
   } catch(e) {
-    bar.textContent = '';
+    lockGuestEntry();
+    bar.textContent = '请登录后使用完整建模流程';
+    actions.innerHTML = `<a href="login.html" class="btn btn-o btn-sm">登录</a>`;
   }
 })();
 
