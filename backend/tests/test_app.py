@@ -473,3 +473,56 @@ def test_model_record_role_permissions(client):
         "dimensions": [],
     })
     assert create_resp.status_code == 403
+
+
+def test_instructor_can_soft_delete_and_restore_model_record(client):
+    """讲师软删除记录后默认列表隐藏，恢复列表可见，恢复后重新显示"""
+    login_student(client, "delete@test.com")
+    create_resp = client.post("/api/model-records", json={
+        "summary": {"公司名称": "杭州测试科技"},
+        "dimensions": [{"id": "D1", "name": "战略拆解", "definition": "拆解战略"}],
+    })
+    record_id = create_resp.get_json()["record"]["record_id"]
+    client.post("/api/auth/logout")
+
+    login_instructor(client)
+    delete_resp = client.delete(f"/api/instructor/model-records/{record_id}")
+    assert delete_resp.status_code == 200
+    assert delete_resp.get_json()["record"]["deleted_at"]
+
+    active_resp = client.get("/api/instructor/model-records")
+    assert active_resp.status_code == 200
+    assert active_resp.get_json()["records"] == []
+
+    deleted_resp = client.get("/api/instructor/model-records?deleted=1")
+    assert deleted_resp.status_code == 200
+    deleted_records = deleted_resp.get_json()["records"]
+    assert len(deleted_records) == 1
+    assert deleted_records[0]["record_id"] == record_id
+    assert deleted_records[0]["deleted_at"]
+
+    restore_resp = client.post(f"/api/instructor/model-records/{record_id}/restore")
+    assert restore_resp.status_code == 200
+
+    restored_active_resp = client.get("/api/instructor/model-records")
+    assert restored_active_resp.status_code == 200
+    restored_records = restored_active_resp.get_json()["records"]
+    assert len(restored_records) == 1
+    assert restored_records[0]["record_id"] == record_id
+    assert restored_records[0]["deleted_at"] is None
+
+
+def test_only_instructor_can_delete_or_restore_model_records(client):
+    """学生账号不能删除或恢复讲师记录"""
+    login_student(client, "student-delete@test.com")
+    create_resp = client.post("/api/model-records", json={
+        "summary": {"公司名称": "杭州测试科技"},
+        "dimensions": [{"id": "D1", "name": "战略拆解"}],
+    })
+    record_id = create_resp.get_json()["record"]["record_id"]
+
+    delete_resp = client.delete(f"/api/instructor/model-records/{record_id}")
+    restore_resp = client.post(f"/api/instructor/model-records/{record_id}/restore")
+
+    assert delete_resp.status_code == 403
+    assert restore_resp.status_code == 403

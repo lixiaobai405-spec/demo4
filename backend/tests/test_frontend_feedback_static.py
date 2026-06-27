@@ -112,6 +112,14 @@ def test_login_page_hides_default_teacher_credentials():
     assert "讲师端只读展示摘要信息和最终维度" in html
 
 
+def test_login_page_does_not_auto_redirect_existing_session():
+    html = _read_frontend("login.html")
+    session_check = html.split("(async () => {", 1)[1].split("})();", 1)[0]
+
+    assert "fetch(`${API}/auth/me`)" in session_check
+    assert "window.location.href" not in session_check
+
+
 def test_index_page_does_not_offer_guest_mode_entry():
     html = _read_frontend("index.html")
 
@@ -140,3 +148,15 @@ def test_teacher_dashboard_lists_summary_and_final_dimensions():
     assert "摘要信息" in html
     assert "最终维度" in html
     assert "renderRecords" in html
+
+
+def test_teacher_dashboard_can_delete_restore_and_collapse_records():
+    html = _read_frontend("teacher.html")
+
+    assert "deleteRecord(" in html
+    assert "restoreRecord(" in html
+    assert "toggleDeletedView(" in html
+    assert "toggleCollapse(" in html
+    assert "收起" in html
+    assert "恢复列表" in html
+    assert "method: 'DELETE'" in html

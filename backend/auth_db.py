@@ -47,6 +47,7 @@ def init_auth_db():
                 summary_json TEXT NOT NULL,
                 dimensions_json TEXT NOT NULL,
                 created_at TEXT NOT NULL,
+                deleted_at TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             );
             CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON user_sessions(user_id);
@@ -54,6 +55,8 @@ def init_auth_db():
             CREATE INDEX IF NOT EXISTS idx_model_records_created_at ON model_records(created_at);
         """)
         _ensure_users_columns(conn)
+        _ensure_model_record_columns(conn)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_model_records_deleted_at ON model_records(deleted_at)")
         conn.commit()
     finally:
         conn.close()
@@ -67,6 +70,16 @@ def _ensure_users_columns(conn):
         "job_title": "ALTER TABLE users ADD COLUMN job_title TEXT NOT NULL DEFAULT ''",
         "recovery_question": "ALTER TABLE users ADD COLUMN recovery_question TEXT",
         "recovery_answer_hash": "ALTER TABLE users ADD COLUMN recovery_answer_hash TEXT",
+    }
+    for column, sql in migrations.items():
+        if column not in existing:
+            conn.execute(sql)
+
+
+def _ensure_model_record_columns(conn):
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(model_records)").fetchall()}
+    migrations = {
+        "deleted_at": "ALTER TABLE model_records ADD COLUMN deleted_at TEXT",
     }
     for column, sql in migrations.items():
         if column not in existing:
@@ -214,16 +227,45 @@ def create_model_record(record_id, user_id, summary_json, dimensions_json, creat
         conn.close()
 
 
-def list_model_records():
+def list_model_records(deleted_only=False):
     conn = get_conn()
     try:
+        where = "WHERE r.deleted_at IS NOT NULL" if deleted_only else "WHERE r.deleted_at IS NULL"
         rows = conn.execute(
             """SELECT r.*, u.email, u.display_name, u.company_name, u.job_title
                FROM model_records r
                JOIN users u ON u.user_id = r.user_id
+               {where}
                ORDER BY r.created_at DESC, r.record_id DESC"""
+            .format(where=where)
         ).fetchall()
         return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def soft_delete_model_record(record_id, deleted_at):
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            "UPDATE model_records SET deleted_at = ? WHERE record_id = ? AND deleted_at IS NULL",
+            (deleted_at, record_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def restore_model_record(record_id):
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            "UPDATE model_records SET deleted_at = NULL WHERE record_id = ? AND deleted_at IS NOT NULL",
+            (record_id,),
+        )
+        conn.commit()
+        return cur.rowcount > 0
     finally:
         conn.close()
 

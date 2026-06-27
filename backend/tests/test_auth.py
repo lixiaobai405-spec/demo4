@@ -33,6 +33,38 @@ def isolated_db():
         pass
 
 
+def test_init_auth_db_migrates_old_model_records_deleted_at_column():
+    """旧 model_records 表缺少 deleted_at 时，初始化会补列并创建索引"""
+    conn = auth_db.get_conn()
+    try:
+        conn.execute("DROP TABLE model_records")
+        conn.execute(
+            """CREATE TABLE model_records (
+                record_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                summary_json TEXT NOT NULL,
+                dimensions_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )"""
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    auth_db.init_auth_db()
+
+    conn = auth_db.get_conn()
+    try:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(model_records)").fetchall()}
+        indexes = {row["name"] for row in conn.execute("PRAGMA index_list(model_records)").fetchall()}
+    finally:
+        conn.close()
+
+    assert "deleted_at" in columns
+    assert "idx_model_records_deleted_at" in indexes
+
+
 # ═════════════════════════════════════════════════════════════
 # RED: auth_db — 用户 CRUD
 # ═════════════════════════════════════════════════════════════

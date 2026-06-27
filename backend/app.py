@@ -28,7 +28,13 @@ from backend.ai_service import (
     STEP3_GUIDANCE,
     STEP4_GUIDANCE,
 )
-from backend.auth_db import create_model_record, init_auth_db, list_model_records
+from backend.auth_db import (
+    create_model_record,
+    init_auth_db,
+    list_model_records,
+    restore_model_record,
+    soft_delete_model_record,
+)
 from backend.auth_service import (
     AuthError,
     ensure_default_teacher,
@@ -394,10 +400,12 @@ def api_instructor_model_records():
         return jsonify({"error": "forbidden", "message": "当前账号无权访问讲师看板"}), 403
 
     records = []
-    for row in list_model_records():
+    deleted_only = request.args.get("deleted") in {"1", "true", "yes"}
+    for row in list_model_records(deleted_only=deleted_only):
         records.append({
             "record_id": row["record_id"],
             "created_at": row["created_at"],
+            "deleted_at": row["deleted_at"],
             "summary": json.loads(row["summary_json"]),
             "dimensions": json.loads(row["dimensions_json"]),
             "user": {
@@ -409,6 +417,33 @@ def api_instructor_model_records():
             },
         })
     return jsonify({"records": records})
+
+
+@app.route("/api/instructor/model-records/<record_id>", methods=["DELETE"])
+@require_auth
+def api_delete_model_record(record_id):
+    user = current_user()
+    if user.get("role") != "instructor":
+        return jsonify({"error": "forbidden", "message": "当前账号无权删除记录"}), 403
+
+    deleted_at = _now_str()
+    if not soft_delete_model_record(record_id, deleted_at):
+        return jsonify({"error": "not_found", "message": "记录不存在或已删除"}), 404
+
+    return jsonify({"record": {"record_id": record_id, "deleted_at": deleted_at}})
+
+
+@app.route("/api/instructor/model-records/<record_id>/restore", methods=["POST"])
+@require_auth
+def api_restore_model_record(record_id):
+    user = current_user()
+    if user.get("role") != "instructor":
+        return jsonify({"error": "forbidden", "message": "当前账号无权恢复记录"}), 403
+
+    if not restore_model_record(record_id):
+        return jsonify({"error": "not_found", "message": "记录不存在或未被删除"}), 404
+
+    return jsonify({"record": {"record_id": record_id, "deleted_at": None}})
 
 
 def _now_str():

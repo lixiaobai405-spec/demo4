@@ -13,11 +13,18 @@
 .dash-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .record-list { display: flex; flex-direction: column; gap: 14px; }
 .record-card { background: var(--sf); border: 1px solid var(--br); border-radius: 12px; box-shadow: var(--sh); padding: 18px; }
+.record-card.deleted { opacity: .92; }
 .record-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
 .record-user { font-size: 15px; font-weight: 700; color: var(--t1); }
 .record-meta { font-size: 12px; color: var(--t3); line-height: 1.7; margin-top: 3px; }
+.record-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 220px; }
 .record-time { font-size: 12px; color: var(--t3); text-align: right; }
+.record-controls { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+.icon-btn { width: 32px; height: 32px; border: 1px solid var(--br); background: #fff; color: var(--p80); border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; }
+.icon-btn:hover { border-color: var(--p60); background: var(--sf2); }
+.deleted-mark { color: #991B1B; }
 .record-grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.3fr); gap: 14px; }
+.record-grid.collapsed { display: none; }
 .panel { background: var(--sf2); border: 1px solid var(--br); border-radius: 10px; padding: 14px; }
 .panel-title { font-size: 13px; font-weight: 700; color: var(--p80); margin-bottom: 10px; }
 .summary-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -28,7 +35,7 @@
 .dim-name { font-size: 13px; font-weight: 700; color: var(--t1); margin-bottom: 4px; }
 .dim-def { font-size: 12.5px; color: var(--t2); line-height: 1.6; }
 .empty { background: var(--sf); border: 1px dashed var(--brk); border-radius: 12px; padding: 36px; text-align: center; color: var(--t3); }
-@media(max-width:800px){ .record-grid { grid-template-columns: 1fr; } .record-time { text-align: left; } }
+@media(max-width:800px){ .record-grid { grid-template-columns: 1fr; } .record-side { align-items: flex-start; min-width: 0; } .record-time { text-align: left; } }
 </style>
 </head>
 <body>
@@ -45,6 +52,7 @@
         <div class="dash-sub" id="dashSub">查看用户提交的摘要信息和最终维度。</div>
       </div>
       <div class="dash-actions">
+        <button class="btn btn-o btn-sm" id="deletedToggle" onclick="toggleDeletedView()">恢复列表</button>
         <a class="btn btn-o btn-sm" href="index.html">返回首页</a>
         <button class="btn btn-g btn-sm" onclick="logout()">退出登录</button>
       </div>
@@ -59,6 +67,9 @@
 
 <script>
 const API = '/api';
+let deletedView = false;
+let currentRecords = [];
+const collapsedRecords = new Set();
 
 async function loadTeacher() {
   try {
@@ -74,10 +85,12 @@ async function loadTeacher() {
     }
     localStorage.setItem('lm_user', JSON.stringify(me.user));
 
-    const resp = await fetch('/api/instructor/model-records');
+    const url = deletedView ? '/api/instructor/model-records?deleted=1' : '/api/instructor/model-records';
+    const resp = await fetch(url);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.message || '无法加载记录');
-    renderRecords(data.records || []);
+    currentRecords = data.records || [];
+    renderRecords(currentRecords);
   } catch (err) {
     document.getElementById('recordList').innerHTML = `<div class="empty">${escapeHtml(err.message || '加载失败')}</div>`;
   }
@@ -85,21 +98,43 @@ async function loadTeacher() {
 
 function renderRecords(records) {
   const list = document.getElementById('recordList');
-  document.getElementById('dashSub').textContent = `共 ${records.length} 条历史记录。`;
+  const toggle = document.getElementById('deletedToggle');
+  toggle.textContent = deletedView ? '返回记录' : '恢复列表';
+  document.getElementById('dashSub').textContent = deletedView
+    ? `共 ${records.length} 条已删除记录。`
+    : `共 ${records.length} 条历史记录。`;
   if (!records.length) {
-    list.innerHTML = '<div class="empty">暂无用户提交的建模记录。</div>';
+    list.innerHTML = deletedView
+      ? '<div class="empty">暂无已删除记录。</div>'
+      : '<div class="empty">暂无用户提交的建模记录。</div>';
     return;
   }
-  list.innerHTML = records.map(record => `
-    <div class="record-card">
+  list.innerHTML = records.map(record => {
+    const collapsed = collapsedRecords.has(record.record_id);
+    const collapseText = collapsed ? '展开' : '收起';
+    const collapseIcon = collapsed ? '▸' : '▾';
+    const deletedInfo = record.deleted_at
+      ? `<br><span class="deleted-mark">删除：${formatDate(record.deleted_at)}</span>`
+      : '';
+    const actionButton = deletedView
+      ? `<button class="btn btn-p btn-sm" onclick="restoreRecord('${record.record_id}')">恢复</button>`
+      : `<button class="btn btn-d btn-sm" onclick="deleteRecord('${record.record_id}')">删除</button>`;
+    return `
+    <div class="record-card ${deletedView ? 'deleted' : ''}">
       <div class="record-head">
         <div>
           <div class="record-user">${escapeHtml(record.user.display_name)} · ${escapeHtml(record.user.email)}</div>
           <div class="record-meta">${escapeHtml(record.user.company_name || '未填写公司')} · ${escapeHtml(record.user.job_title || '未填写岗位')}</div>
         </div>
-        <div class="record-time">${formatDate(record.created_at)}<br><span>${escapeHtml(record.record_id)}</span></div>
+        <div class="record-side">
+          <div class="record-time">${formatDate(record.created_at)}${deletedInfo}<br><span>${escapeHtml(record.record_id)}</span></div>
+          <div class="record-controls">
+            <button class="icon-btn" onclick="toggleCollapse('${record.record_id}')" title="${collapseText}" aria-label="${collapseText}">${collapseIcon}</button>
+            ${actionButton}
+          </div>
+        </div>
       </div>
-      <div class="record-grid">
+      <div class="record-grid ${collapsed ? 'collapsed' : ''}">
         <div class="panel">
           <div class="panel-title">摘要信息</div>
           ${renderSummary(record.summary)}
@@ -110,7 +145,8 @@ function renderRecords(records) {
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderSummary(summary) {
@@ -141,6 +177,57 @@ function escapeHtml(value) {
   const div = document.createElement('div');
   div.textContent = value || '';
   return div.innerHTML;
+}
+
+function toggleCollapse(recordId) {
+  if (collapsedRecords.has(recordId)) {
+    collapsedRecords.delete(recordId);
+  } else {
+    collapsedRecords.add(recordId);
+  }
+  renderRecords(currentRecords);
+}
+
+async function toggleDeletedView() {
+  deletedView = !deletedView;
+  collapsedRecords.clear();
+  await loadTeacher();
+}
+
+async function deleteRecord(recordId) {
+  if (!confirm('确定要删除这条记录吗？删除后可在恢复列表中找回。')) return;
+  try {
+    const resp = await fetch(`${API}/instructor/model-records/${recordId}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || '删除失败');
+    collapsedRecords.delete(recordId);
+    showToast('记录已移入恢复列表');
+    await loadTeacher();
+  } catch (err) {
+    showToast(err.message || '删除失败', true);
+  }
+}
+
+async function restoreRecord(recordId) {
+  if (!confirm('确定要恢复这条记录吗？')) return;
+  try {
+    const resp = await fetch(`${API}/instructor/model-records/${recordId}/restore`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || '恢复失败');
+    collapsedRecords.delete(recordId);
+    showToast('记录已恢复');
+    await loadTeacher();
+  } catch (err) {
+    showToast(err.message || '恢复失败', true);
+  }
+}
+
+function showToast(message, isError) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.background = isError ? '#991B1B' : '#1A1520';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
 async function logout() {

@@ -282,7 +282,6 @@ function showToast(msg, err) {
     const data = await resp.json();
     if (data.user) {
       localStorage.setItem('lm_user', JSON.stringify(data.user));
-      window.location.href = data.user.role === 'instructor' ? 'teacher.html' : 'index.html';
     }
   } catch(e) {}
 })();
